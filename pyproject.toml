@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "nexusos"
+version = "1.0.0"
+description = "Universal Hardware Abstraction Layer & Cloud Fleet Middleware for Heterogeneous Robots"
+readme = "README.md"
+authors = [{ name = "NexusOS Maintainers" }]
+license = { text = "NCL-1.0 Dual License" }
+requires-python = ">=3.10"
+dependencies = [
+    "fastapi>=0.100.0",
+    "uvicorn[standard]>=0.22.0",
+    "websockets>=11.0",
+    "protobuf>=4.23.0",
+    "pydantic>=2.0.0",
+    "jinja2>=3.1.0",
+    "grpcio>=1.54.0",
+    "grpcio-tools>=1.54.0"
+]
+
+[project.scripts]
+nexusos-sim = "scripts.run_sim:main"
+nexusos-gui = "scripts.desktop_gui:main"
+
+[project.urls]
+"Homepage" = "https://github.com/aachcoder47/NexusOS"
+"Bug Tracker" = "https://github.com/aachcoder47/NexusOS/issues"

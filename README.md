@@ -167,3 +167,14 @@ NexusOS is distributed under the **NexusOS Community & Commercial License (NCL v
 - `POST /api/v1/license/verify`: Verify JWT commercial license tokens.
 - `POST /api/v1/license/report_usage`: Submit quarterly revenue/robot unit reports.
 - `POST /api/v1/webhooks/stripe`: Automated Stripe webhook handler issuing commercial license keys upon payment.
+
+---
+
+## 6. Community, Feedback & Support
+
+We welcome feedback, hardware driver requests, bug reports, and contributions!
+
+- **Report Bugs & Issues**: Open a ticket on [GitHub Issues](https://github.com/aachcoder47/NexusOS/issues).
+- **Request New HAL Plugins**: Request support for your robot hardware (ODrive, VESC, CAN bus, ROS 2 bridges) via [Feature Request](https://github.com/aachcoder47/NexusOS/issues/new?template=feature_request.md).
+- **Contributing**: Check out [`CONTRIBUTING.md`](CONTRIBUTING.md) for contribution guidelines.
+
