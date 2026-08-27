@@ -8,7 +8,7 @@ version = "1.0.0"
 description = "Universal Hardware Abstraction Layer & Cloud Fleet Middleware for Heterogeneous Robots"
 readme = "README.md"
 authors = [{ name = "NexusOS Maintainers" }]
-license = { text = "NCL-1.0 Dual License" }
+license = "AGPL-3.0-or-later"
 requires-python = ">=3.10"
 dependencies = [
     "fastapi>=0.100.0",
@@ -28,3 +28,7 @@ nexusos-gui = "scripts.desktop_gui:main"
 [project.urls]
 "Homepage" = "https://github.com/aachcoder47/NexusOS"
 "Bug Tracker" = "https://github.com/aachcoder47/NexusOS/issues"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["hal*", "edge*", "cloud*", "proto*", "licensing*"]
