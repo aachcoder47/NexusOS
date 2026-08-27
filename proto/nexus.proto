@@ -1,0 +1,99 @@
+syntax = "proto3";
+
+package nexus.v1;
+
+enum RobotType {
+  ROBOT_TYPE_UNSPECIFIED = 0;
+  ROBOT_TYPE_DIFFERENTIAL_DRIVE = 1;
+  ROBOT_TYPE_ROBOTIC_ARM = 2;
+  ROBOT_TYPE_QUADRUPED = 3;
+  ROBOT_TYPE_DRONE = 4;
+}
+
+enum RobotMode {
+  ROBOT_MODE_UNINITIALIZED = 0;
+  ROBOT_MODE_MANUAL = 1;
+  ROBOT_MODE_AUTONOMOUS = 2;
+  ROBOT_MODE_EMERGENCY_STOP = 3;
+  ROBOT_MODE_FAULT = 4;
+}
+
+message Vector3 {
+  double x = 1;
+  double y = 2;
+  double z = 3;
+}
+
+message Quaternion {
+  double x = 1;
+  double y = 2;
+  double z = 3;
+  double w = 4;
+}
+
+message Pose3D {
+  Vector3 position = 1;
+  Quaternion orientation = 2;
+}
+
+message Twist3D {
+  Vector3 linear = 1;
+  Vector3 angular = 2;
+}
+
+message BatteryState {
+  float voltage = 1;
+  float percentage = 2;
+  bool is_charging = 3;
+}
+
+message JointState {
+  repeated string names = 1;
+  repeated double positions = 2;
+  repeated double velocities = 3;
+  repeated double effort = 4;
+}
+
+message MetricValue {
+  oneof value {
+    double double_value = 1;
+    string string_value = 2;
+    bool bool_value = 3;
+  }
+}
+
+message RobotTelemetry {
+  string robot_id = 1;
+  RobotType robot_type = 2;
+  double timestamp_sec = 3;
+  Pose3D pose = 4;
+  Twist3D twist = 5;
+  BatteryState battery = 6;
+  RobotMode mode = 7;
+  JointState joints = 8;
+  map<string, MetricValue> custom_metrics = 9;
+  string status_message = 10;
+}
+
+message ControlCommand {
+  string command_id = 1;
+  string robot_id = 2;
+  double timestamp_sec = 3;
+  Twist3D target_twist = 4;
+  JointState target_joints = 5;
+  RobotMode requested_mode = 6;
+  map<string, string> parameters = 7;
+}
+
+message CommandAck {
+  string command_id = 1;
+  string robot_id = 2;
+  bool success = 3;
+  string message = 4;
+  double timestamp_sec = 5;
+}
+
+service RobotFleetService {
+  rpc StreamTelemetry (stream RobotTelemetry) returns (stream ControlCommand);
+  rpc SendCommand (ControlCommand) returns (CommandAck);
+}

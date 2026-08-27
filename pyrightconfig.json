@@ -1,0 +1,15 @@
+{
+  "include": [
+    "cloud",
+    "edge",
+    "licensing",
+    "hal",
+    "scripts",
+    "tests"
+  ],
+  "extraPaths": [
+    "C:/Python312/Lib/site-packages",
+    "c:/Users/ASUS/Downloads/NexusOS"
+  ],
+  "pythonVersion": "3.12"
+}

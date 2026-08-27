@@ -1,0 +1,23 @@
+NexusOS Robotics Middleware
+Copyright (c) 2026 NexusOS Core Contributors & Maintainers.
+
+This product includes software developed as part of the NexusOS project.
+
+---
+
+### Third-Party Open Source Software Attributions
+
+NexusOS incorporates or interacts with open-source software libraries and frameworks subject to their respective licenses:
+
+1. **FastAPI & Starlette**: Licensed under the MIT License. Copyright (c) 2018 Sebastián Ramírez.
+2. **Uvicorn**: Licensed under the BSD 3-Clause License. Copyright (c) 2017 Encode OSS Ltd.
+3. **Protocol Buffers & gRPC**: Licensed under the BSD 3-Clause / Apache 2.0 Licenses. Copyright (c) Google LLC.
+4. **Websockets**: Licensed under the BSD 3-Clause License. Copyright (c) 2013-2023 Aymeric Augustin.
+5. **Pydantic**: Licensed under the MIT License. Copyright (c) 2019 Samuel Colvin.
+6. **Lucide Icons**: Licensed under the ISC License. Copyright (c) Lucide Contributors.
+
+---
+
+### TRADEMARK NOTICE
+
+"NexusOS", "NexusOS Fleet Controller", "Universal OS for Robotics", and associated logos are trademarks of the NexusOS Project. Usage of these trademarks in derivative commercial offerings requires prior written authorization under a NexusOS Commercial License.

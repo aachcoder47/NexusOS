@@ -1,0 +1,804 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NexusOS | Universal Fleet Management Dashboard</title>
+
+  <!-- Google Fonts: Inter & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <style>
+    :root {
+      --bg-dark: #090d16;
+      --bg-panel: rgba(18, 25, 41, 0.75);
+      --bg-card: rgba(30, 41, 65, 0.6);
+      --border-panel: rgba(255, 255, 255, 0.08);
+      --border-panel-hover: rgba(56, 189, 248, 0.3);
+      --accent-cyan: #38bdf8;
+      --accent-cyan-glow: rgba(56, 189, 248, 0.25);
+      --accent-emerald: #10b981;
+      --accent-rose: #f43f5e;
+      --accent-amber: #f59e0b;
+      --accent-purple: #a855f7;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg-dark);
+      background-image: 
+        radial-gradient(at 0% 0%, rgba(56, 189, 248, 0.08) 0px, transparent 50%),
+        radial-gradient(at 100% 100%, rgba(168, 85, 247, 0.08) 0px, transparent 50%);
+      color: var(--text-main);
+      font-family: var(--font-sans);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+    }
+
+    /* Header Styling */
+    header {
+      background: rgba(15, 23, 42, 0.85);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border-panel);
+      padding: 12px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-logo {
+      width: 36px;
+      height: 36px;
+      background: linear-gradient(135deg, var(--accent-cyan), var(--accent-purple));
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      box-shadow: 0 0 15px var(--accent-cyan-glow);
+    }
+
+    .brand-title h1 {
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      background: linear-gradient(90deg, #fff, var(--text-muted));
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .brand-title p {
+      font-size: 11px;
+      color: var(--accent-cyan);
+      font-family: var(--font-mono);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .header-stats {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+    }
+
+    .stat-pill {
+      background: var(--bg-card);
+      border: 1px solid var(--border-panel);
+      border-radius: 20px;
+      padding: 6px 14px;
+      font-size: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background-color: var(--accent-emerald);
+      box-shadow: 0 0 8px var(--accent-emerald);
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+
+    .btn-estop-global {
+      background: linear-gradient(135deg, #e11d48, #9f1239);
+      border: 1px solid rgba(244, 63, 94, 0.4);
+      color: #fff;
+      font-weight: 700;
+      font-size: 13px;
+      padding: 8px 18px;
+      border-radius: 8px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      box-shadow: 0 0 15px rgba(225, 29, 72, 0.4);
+      transition: all 0.2s ease;
+    }
+
+    .btn-estop-global:hover {
+      transform: scale(1.03);
+      box-shadow: 0 0 25px rgba(225, 29, 72, 0.7);
+    }
+
+    /* Dashboard Layout */
+    .dashboard-container {
+      display: grid;
+      grid-template-columns: 320px 1fr 340px;
+      gap: 16px;
+      padding: 16px 24px;
+      flex: 1;
+    }
+
+    @media (max-width: 1200px) {
+      .dashboard-container {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .panel {
+      background: var(--bg-panel);
+      backdrop-filter: blur(16px);
+      border: 1px solid var(--border-panel);
+      border-radius: 12px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+    }
+
+    .panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--border-panel);
+      padding-bottom: 10px;
+    }
+
+    .panel-header h2 {
+      font-size: 14px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* Robot Fleet Cards */
+    .robot-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      overflow-y: auto;
+      max-height: calc(100vh - 160px);
+    }
+
+    .robot-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-panel);
+      border-radius: 10px;
+      padding: 12px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .robot-card:hover {
+      border-color: var(--border-panel-hover);
+      transform: translateY(-2px);
+    }
+
+    .robot-card.active {
+      border-color: var(--accent-cyan);
+      background: rgba(56, 189, 248, 0.1);
+      box-shadow: 0 0 12px var(--accent-cyan-glow);
+    }
+
+    .robot-card-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 8px;
+    }
+
+    .robot-name {
+      font-weight: 700;
+      font-size: 14px;
+    }
+
+    .badge-mode {
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-family: var(--font-mono);
+      text-transform: uppercase;
+    }
+
+    .badge-manual { background: rgba(56, 189, 248, 0.2); color: var(--accent-cyan); }
+    .badge-auto { background: rgba(168, 85, 247, 0.2); color: var(--accent-purple); }
+    .badge-estop { background: rgba(244, 63, 94, 0.2); color: var(--accent-rose); }
+
+    .battery-bar-container {
+      background: rgba(0, 0, 0, 0.3);
+      height: 6px;
+      border-radius: 3px;
+      overflow: hidden;
+      margin-top: 6px;
+    }
+
+    .battery-bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--accent-emerald), var(--accent-cyan));
+      width: 100%;
+      transition: width 0.3s ease;
+    }
+
+    /* Main Trajectory Canvas & Telemetry */
+    .map-container {
+      position: relative;
+      background: #060911;
+      border-radius: 10px;
+      border: 1px solid var(--border-panel);
+      flex: 1;
+      min-height: 380px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    canvas#trajectoryCanvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    .map-overlay {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      background: rgba(15, 23, 42, 0.8);
+      border: 1px solid var(--border-panel);
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--accent-cyan);
+    }
+
+    /* Telemetry Metrics Grid */
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 10px;
+    }
+
+    .metric-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-panel);
+      border-radius: 8px;
+      padding: 10px;
+    }
+
+    .metric-label {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+      text-transform: uppercase;
+    }
+
+    .metric-value {
+      font-family: var(--font-mono);
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    /* Teleoperation Control Panel */
+    .teleop-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .dpad-container {
+      display: grid;
+      grid-template-columns: repeat(3, 54px);
+      grid-template-rows: repeat(3, 54px);
+      gap: 6px;
+      justify-content: center;
+      margin: 10px 0;
+    }
+
+    .btn-dpad {
+      background: var(--bg-card);
+      border: 1px solid var(--border-panel);
+      border-radius: 8px;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      user-select: none;
+    }
+
+    .btn-dpad:hover {
+      border-color: var(--accent-cyan);
+      background: rgba(56, 189, 248, 0.2);
+    }
+
+    .btn-dpad:active {
+      transform: scale(0.92);
+      background: var(--accent-cyan);
+      color: #000;
+    }
+
+    .empty-dpad { visibility: hidden; }
+
+    .slider-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .slider-group label {
+      font-size: 12px;
+      color: var(--text-muted);
+      display: flex;
+      justify-content: space-between;
+    }
+
+    input[type=range] {
+      accent-color: var(--accent-cyan);
+    }
+
+    .joint-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+
+    .joint-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      background: rgba(0,0,0,0.2);
+      padding: 6px 10px;
+      border-radius: 6px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Header Section -->
+  <header>
+    <div class="brand">
+      <div class="brand-logo">
+        <i data-lucide="cpu"></i>
+      </div>
+      <div class="brand-title">
+        <h1>NexusOS Fleet Controller</h1>
+        <p>Universal Heterogeneous Robotics Middleware</p>
+      </div>
+    </div>
+
+    <div class="header-stats">
+      <div class="stat-pill">
+        <div class="status-dot" id="socketStatusDot"></div>
+        <span id="socketStatusText">Connecting...</span>
+      </div>
+      <div class="stat-pill">
+        <i data-lucide="bot" style="width: 14px; height: 14px; color: var(--accent-cyan)"></i>
+        <span id="activeRobotsCount">0</span> Active Robots
+      </div>
+      <div class="stat-pill">
+        <i data-lucide="activity" style="width: 14px; height: 14px; color: var(--accent-purple)"></i>
+        <span id="telemetryRateCount">0</span> Frames
+      </div>
+      <button class="btn-estop-global" onclick="triggerGlobalEstop()">
+        <i data-lucide="shield-alert"></i>
+        GLOBAL E-STOP
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Dashboard Layout -->
+  <div class="dashboard-container">
+
+    <!-- Left Panel: Fleet List -->
+    <div class="panel">
+      <div class="panel-header">
+        <h2><i data-lucide="list"></i> Fleet Directory</h2>
+      </div>
+      <div class="robot-list" id="robotListContainer">
+        <div style="color: var(--text-muted); font-size: 13px; text-align: center; padding: 20px;">
+          Waiting for connected Edge Agents...
+        </div>
+      </div>
+    </div>
+
+    <!-- Center Panel: Live Trajectory & Telemetry -->
+    <div class="panel">
+      <div class="panel-header">
+        <h2 id="selectedRobotTitle"><i data-lucide="navigation"></i> Robot Trajectory Visualizer</h2>
+        <div class="stat-pill" id="selectedRobotTypePill" style="display:none;">
+          TYPE: <span id="selectedRobotType">DIFF_DRIVE</span>
+        </div>
+      </div>
+
+      <!-- 2D Canvas Visualizer -->
+      <div class="map-container">
+        <canvas id="trajectoryCanvas"></canvas>
+        <div class="map-overlay">
+          POSE X: <span id="mapX">0.00</span> | Y: <span id="mapY">0.00</span> | YAW: <span id="mapYaw">0.00</span> rad
+        </div>
+      </div>
+
+      <!-- Metrics Grid -->
+      <div class="metrics-grid">
+        <div class="metric-card">
+          <div class="metric-label">Linear Vel (m/s)</div>
+          <div class="metric-value" id="valLinearVel">0.00</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Angular Vel (rad/s)</div>
+          <div class="metric-value" id="valAngularVel">0.00</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Battery Voltage</div>
+          <div class="metric-value" id="valBatteryVoltage">0.00 V</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Status Flag</div>
+          <div class="metric-value" id="valStatusFlag" style="color: var(--accent-emerald)">OK</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Panel: Teleoperation & Commands -->
+    <div class="panel teleop-panel">
+      <div class="panel-header">
+        <h2><i data-lucide="gamepad-2"></i> Teleop Control Center</h2>
+      </div>
+
+      <div id="teleopControlArea">
+        <div style="font-size: 13px; color: var(--text-muted); margin-bottom: 10px;">
+          Target Velocity Commands:
+        </div>
+
+        <!-- D-Pad -->
+        <div class="dpad-container">
+          <div class="empty-dpad"></div>
+          <button class="btn-dpad" onclick="sendDriveCommand(0.5, 0.0)"><i data-lucide="arrow-up"></i></button>
+          <div class="empty-dpad"></div>
+
+          <button class="btn-dpad" onclick="sendDriveCommand(0.0, 0.8)"><i data-lucide="arrow-left"></i></button>
+          <button class="btn-dpad" onclick="sendDriveCommand(0.0, 0.0)" style="background: rgba(244,63,94,0.2);"><i data-lucide="square"></i></button>
+          <button class="btn-dpad" onclick="sendDriveCommand(0.0, -0.8)"><i data-lucide="arrow-right"></i></button>
+
+          <div class="empty-dpad"></div>
+          <button class="btn-dpad" onclick="sendDriveCommand(-0.5, 0.0)"><i data-lucide="arrow-down"></i></button>
+          <div class="empty-dpad"></div>
+        </div>
+
+        <div class="slider-group" style="margin-top: 15px;">
+          <label>Max Linear Speed: <span id="linearSpeedVal">0.5 m/s</span></label>
+          <input type="range" id="linearSpeedSlider" min="0.1" max="2.0" step="0.1" value="0.5" oninput="document.getElementById('linearSpeedVal').innerText=this.value+' m/s'">
+        </div>
+
+        <div class="slider-group" style="margin-top: 15px;">
+          <label>Max Angular Speed: <span id="angularSpeedVal">0.8 rad/s</span></label>
+          <input type="range" id="angularSpeedSlider" min="0.1" max="3.0" step="0.1" value="0.8" oninput="document.getElementById('angularSpeedVal').innerText=this.value+' rad/s'">
+        </div>
+
+        <!-- Joints Monitor/Control -->
+        <div style="margin-top: 20px;">
+          <div style="font-size: 13px; color: var(--text-muted); margin-bottom: 8px;">Joint States:</div>
+          <div class="joint-list" id="jointStateList">
+            <div style="font-size: 11px; color: var(--text-muted);">No joint data for selected robot.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    // Initialize Lucide icons
+    lucide.createIcons();
+
+    // State Variables
+    let ws = null;
+    let fleetData = {};
+    let selectedRobotId = null;
+    let trajectoryHistory = {}; // robot_id -> array of {x, y}
+
+    // Canvas Setup
+    const canvas = document.getElementById('trajectoryCanvas');
+    const ctx = canvas.getContext('2d');
+
+    function resizeCanvas() {
+      const rect = canvas.parentElement.getBoundingClientRect();
+      canvas.width = rect.width;
+      canvas.height = rect.height;
+    }
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
+    // Connect WebSocket to Cloud Backend
+    function connectWebSocket() {
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const wsUrl = `${protocol}//${window.location.host}/ws/dashboard`;
+
+      ws = new WebSocket(wsUrl);
+
+      ws.onopen = () => {
+        document.getElementById('socketStatusDot').style.backgroundColor = 'var(--accent-emerald)';
+        document.getElementById('socketStatusText').innerText = 'CONNECTED';
+      };
+
+      ws.onmessage = (event) => {
+        const msg = JSON.parse(event.data);
+        if (msg.type === 'FLEET_UPDATE' || msg.type === 'INITIAL_STATE') {
+          fleetData = msg.robots || {};
+          document.getElementById('activeRobotsCount').innerText = msg.active_robots_count || 0;
+          document.getElementById('telemetryRateCount').innerText = msg.total_telemetry_frames || 0;
+
+          // Auto select first robot if none selected
+          const robotIds = Object.keys(fleetData);
+          if (!selectedRobotId && robotIds.length > 0) {
+            selectedRobotId = robotIds[0];
+          }
+
+          updateRobotListUI();
+          updateSelectedRobotUI();
+          renderTrajectoryCanvas();
+        }
+      };
+
+      ws.onclose = () => {
+        document.getElementById('socketStatusDot').style.backgroundColor = 'var(--accent-rose)';
+        document.getElementById('socketStatusText').innerText = 'DISCONNECTED';
+        setTimeout(connectWebSocket, 3000);
+      };
+    }
+
+    function updateRobotListUI() {
+      const container = document.getElementById('robotListContainer');
+      const robotIds = Object.keys(fleetData);
+
+      if (robotIds.length === 0) {
+        container.innerHTML = `<div style="color: var(--text-muted); font-size: 13px; text-align: center; padding: 20px;">Waiting for connected Edge Agents...</div>`;
+        return;
+      }
+
+      let html = '';
+      for (const rId of robotIds) {
+        const r = fleetData[rId];
+        const isSelected = (rId === selectedRobotId);
+        const mode = r.mode || 'UNKNOWN';
+        const batteryPct = r.battery ? r.battery.percentage : 100;
+        let badgeClass = 'badge-manual';
+        if (mode === 'AUTONOMOUS') badgeClass = 'badge-auto';
+        if (mode === 'EMERGENCY_STOP') badgeClass = 'badge-estop';
+
+        html += `
+          <div class="robot-card ${isSelected ? 'active' : ''}" onclick="selectRobot('${rId}')">
+            <div class="robot-card-top">
+              <span class="robot-name">${rId}</span>
+              <span class="badge-mode ${badgeClass}">${mode}</span>
+            </div>
+            <div style="font-size: 11px; color: var(--text-muted); font-family: var(--font-mono)">
+              ${r.robot_type || 'ROBOT'}
+            </div>
+            <div class="battery-bar-container">
+              <div class="battery-bar-fill" style="width: ${batteryPct}%"></div>
+            </div>
+          </div>
+        `;
+      }
+      container.innerHTML = html;
+    }
+
+    function selectRobot(robotId) {
+      selectedRobotId = robotId;
+      updateRobotListUI();
+      updateSelectedRobotUI();
+    }
+
+    function updateSelectedRobotUI() {
+      if (!selectedRobotId || !fleetData[selectedRobotId]) return;
+      const r = fleetData[selectedRobotId];
+
+      document.getElementById('selectedRobotTitle').innerText = `Robot: ${selectedRobotId}`;
+      document.getElementById('selectedRobotTypePill').style.display = 'inline-flex';
+      document.getElementById('selectedRobotType').innerText = r.robot_type || 'GENERIC';
+
+      const posX = r.pose?.position?.x || 0;
+      const posY = r.pose?.position?.y || 0;
+      const yaw = r.pose?.orientation_rpy?.yaw || 0;
+
+      document.getElementById('mapX').innerText = posX.toFixed(2);
+      document.getElementById('mapY').innerText = posY.toFixed(2);
+      document.getElementById('mapYaw').innerText = yaw.toFixed(2);
+
+      document.getElementById('valLinearVel').innerText = (r.twist?.linear?.x || 0).toFixed(2);
+      document.getElementById('valAngularVel').innerText = (r.twist?.angular?.z || 0).toFixed(2);
+      document.getElementById('valBatteryVoltage').innerText = (r.battery?.voltage || 0).toFixed(1) + ' V';
+      document.getElementById('valStatusFlag').innerText = r.status_message || 'OK';
+
+      // Record trajectory history
+      if (!trajectoryHistory[selectedRobotId]) trajectoryHistory[selectedRobotId] = [];
+      const history = trajectoryHistory[selectedRobotId];
+      history.push({ x: posX, y: posY });
+      if (history.length > 200) history.shift();
+
+      // Render Joints list
+      const jointContainer = document.getElementById('jointStateList');
+      if (r.joints && r.joints.names && r.joints.names.length > 0) {
+        let jHtml = '';
+        for (let i = 0; i < r.joints.names.length; i++) {
+          const name = r.joints.names[i];
+          const pos = r.joints.positions[i] || 0;
+          jHtml += `
+            <div class="joint-row">
+              <span>${name}</span>
+              <span style="color: var(--accent-cyan)">${pos.toFixed(2)} rad</span>
+            </div>
+          `;
+        }
+        jointContainer.innerHTML = jHtml;
+      } else {
+        jointContainer.innerHTML = `<div style="font-size: 11px; color: var(--text-muted);">No joint metrics available.</div>`;
+      }
+    }
+
+    function renderTrajectoryCanvas() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      const centerX = canvas.width / 2;
+      const centerY = canvas.height / 2;
+      const scale = 40; // 40 pixels per meter
+
+      // Draw Grid Lines
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+      ctx.lineWidth = 1;
+      for (let x = 0; x < canvas.width; x += 40) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, canvas.height);
+        ctx.stroke();
+      }
+      for (let y = 0; y < canvas.height; y += 40) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(canvas.width, y);
+        ctx.stroke();
+      }
+
+      // Draw Origin Crosshair
+      ctx.strokeStyle = 'rgba(56, 189, 248, 0.2)';
+      ctx.beginPath();
+      ctx.moveTo(centerX - 15, centerY);
+      ctx.lineTo(centerX + 15, centerY);
+      ctx.moveTo(centerX, centerY - 15);
+      ctx.lineTo(centerX, centerY + 15);
+      ctx.stroke();
+
+      if (!selectedRobotId || !fleetData[selectedRobotId]) return;
+      const r = fleetData[selectedRobotId];
+      const posX = r.pose?.position?.x || 0;
+      const posY = r.pose?.position?.y || 0;
+      const yaw = r.pose?.orientation_rpy?.yaw || 0;
+
+      // Draw Trajectory Path History
+      const history = trajectoryHistory[selectedRobotId] || [];
+      if (history.length > 1) {
+        ctx.strokeStyle = 'var(--accent-cyan)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        for (let i = 0; i < history.length; i++) {
+          const px = centerX + history[i].x * scale;
+          const py = centerY - history[i].y * scale; // Invert canvas Y
+          if (i === 0) ctx.moveTo(px, py);
+          else ctx.lineTo(px, py);
+        }
+        ctx.stroke();
+      }
+
+      // Draw Robot Representation (Triangle Arrow)
+      const robotCx = centerX + posX * scale;
+      const robotCy = centerY - posY * scale;
+
+      ctx.save();
+      ctx.translate(robotCx, robotCy);
+      ctx.rotate(-yaw); // Canvas rotation
+
+      // Robot Body Glow
+      ctx.fillStyle = 'var(--accent-purple)';
+      ctx.shadowColor = 'var(--accent-purple)';
+      ctx.shadowBlur = 15;
+
+      ctx.beginPath();
+      ctx.moveTo(14, 0);
+      ctx.lineTo(-10, -10);
+      ctx.lineTo(-6, 0);
+      ctx.lineTo(-10, 10);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.restore();
+    }
+
+    function sendDriveCommand(linearScale, angularScale) {
+      if (!selectedRobotId || !ws) return;
+
+      const maxLin = parseFloat(document.getElementById('linearSpeedSlider').value);
+      const maxAng = parseFloat(document.getElementById('angularSpeedSlider').value);
+
+      const command = {
+        action: "COMMAND",
+        robot_id: selectedRobotId,
+        command: {
+          requested_mode: "MANUAL",
+          twist: {
+            linear: { x: linearScale * maxLin, y: 0, z: 0 },
+            angular: { x: 0, y: 0, z: angularScale * maxAng }
+          }
+        }
+      };
+
+      ws.send(JSON.stringify(command));
+    }
+
+    function triggerGlobalEstop() {
+      if (!ws) return;
+      ws.send(JSON.stringify({ action: "GLOBAL_ESTOP" }));
+      alert("GLOBAL EMERGENCY STOP ACTIVATED!");
+    }
+
+    // Start WebSocket Connection on page load
+    window.onload = connectWebSocket;
+  </script>
+</body>
+</html>

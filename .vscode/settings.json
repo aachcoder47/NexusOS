@@ -1,0 +1,7 @@
+{
+  "python.defaultInterpreterPath": "C:\\Python312\\python.exe",
+  "python.analysis.extraPaths": [
+    "C:\\Python312\\Lib\\site-packages",
+    "c:\\Users\\ASUS\\Downloads\\NexusOS"
+  ]
+}

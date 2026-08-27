@@ -1,0 +1,49 @@
+version: '3.8'
+
+services:
+  nexus-cloud:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.cloud
+    container_name: nexus-cloud-server
+    ports:
+      - "8000:8000"
+    networks:
+      - nexus-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+
+  edge-rover-alpha:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.edge
+    container_name: nexus-edge-rover-alpha
+    command: ["python", "edge/agent.py", "rover-alpha", "DIFFERENTIAL_DRIVE"]
+    environment:
+      - SERVER_URL=ws://nexus-cloud:8000/ws/telemetry
+    depends_on:
+      - nexus-cloud
+    networks:
+      - nexus-net
+    restart: unless-stopped
+
+  edge-arm-beta:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.edge
+    container_name: nexus-edge-arm-beta
+    command: ["python", "edge/agent.py", "arm-beta", "ROBOTIC_ARM"]
+    environment:
+      - SERVER_URL=ws://nexus-cloud:8000/ws/telemetry
+    depends_on:
+      - nexus-cloud
+    networks:
+      - nexus-net
+    restart: unless-stopped
+
+networks:
+  nexus-net:
+    driver: bridge
