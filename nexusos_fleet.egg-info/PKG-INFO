@@ -1,0 +1,202 @@
+Metadata-Version: 2.4
+Name: nexusos-fleet
+Version: 1.0.0
+Summary: Universal Hardware Abstraction Layer & Cloud Fleet Middleware for Heterogeneous Robots
+Author: NexusOS Maintainers
+License-Expression: AGPL-3.0-or-later
+Project-URL: Homepage, https://github.com/aachcoder47/NexusOS
+Project-URL: Bug Tracker, https://github.com/aachcoder47/NexusOS/issues
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown
+License-File: LICENSE.md
+License-File: NOTICE
+Requires-Dist: fastapi>=0.100.0
+Requires-Dist: uvicorn[standard]>=0.22.0
+Requires-Dist: websockets>=11.0
+Requires-Dist: protobuf>=4.23.0
+Requires-Dist: pydantic>=2.0.0
+Requires-Dist: jinja2>=3.1.0
+Requires-Dist: grpcio>=1.54.0
+Requires-Dist: grpcio-tools>=1.54.0
+Dynamic: license-file
+
+# NexusOS: Universal OS & Fleet Middleware for Heterogeneous Robots
+
+[![License: NCL-1.0](https://img.shields.io/badge/License-NCL--1.0_Dual-blue.svg)](LICENSE.md)
+
+> **Solving the "Tower of Babel" in Robotics** through zero-dependency hardware abstraction, WAN-resilient telemetry streaming, and unified cloud fleet orchestration.
+
+NexusOS is a next-generation universal robotics OS and fleet middleware engineered to solve the core limitations of ROS 2. It unifies heterogeneous multi-vendor robot fleets (mobile rovers, robotic arms, quadrupeds, drones) under a single standardized messaging, control, safety, and visualization framework without ROS version lock-in or DDS networking fragility.
+
+---
+
+## 1. Architecture & Technology Stack Blueprint
+
+### Technical Stack Selection
+- **Universal Hardware Abstraction**: Asynchronous Python **Hardware Abstraction Layer (HAL)** plugin architecture normalizing physical drivers (Serial, CAN, Modbus, ROS 2, MicroPython) into zero-dependency data schemas.
+- **Serialization & Transport**: Protocol Buffers (`proto/nexus.proto`) with WebSockets / gRPC transport streams for real-time edge-to-cloud synchronization.
+- **Cloud Backend**: FastAPI async server (`cloud/main.py`) with WebSocket broadcasting, REST control endpoints, and an in-memory `FleetStateManager`.
+- **Fleet Visualizer & Control Dashboard**: Modern glassmorphic Web UI (`cloud/static/index.html`) featuring live 2D pose trajectory canvas rendering, responsive gauge cards, and interactive teleoperation controls.
+- **Orchestration & Containerization**: Docker and Docker Compose orchestrating edge agent simulators alongside cloud backend nodes.
+
+### Hardware Abstraction Architecture
+Heterogeneous hardware differs in joint configuration, driver interfaces, sensor protocols, and kinematic models. NexusOS abstracts these differences through a unified abstract interface:
+
+```
+Physical Hardware Driver (Serial / CAN / ROS 2)
+                   │
+                   ▼
+     AbstractHardwarePlugin (HAL ABC)
+  ┌────────────────┬────────────────┐
+  │ read_telemetry │  send_command  │
+  └────────┬───────┴────────┬───────┘
+           │                │
+           ▼                ▼
+     RobotTelemetry   MotorCommandData
+           │                │
+  (Normalized Pose, Twist, Joints, Battery)
+                   │
+                   ▼
+           EdgeAgent Daemon
+                   │ (WebSockets / Protobuf Stream)
+                   ▼
+          Cloud Fleet Server
+```
+
+---
+
+## 2. Directory Structure
+
+```
+NexusOS/
+├── proto/
+│   ├── nexus.proto              # Universal Protobuf schemas (Telemetry, Commands, Modes)
+│   └── gen/                     # Generated gRPC / Protobuf Python stubs
+├── hal/
+│   ├── base.py                  # Abstract Hardware Plugin (ABC) & Dataclasses
+│   └── plugins/
+│       ├── diff_drive.py        # Differential Drive Mobile Base HAL Plugin
+│       └── robotic_arm.py       # 6-DOF Manipulator Arm HAL Plugin
+├── edge/
+│   ├── config.py                # Edge agent parameters & watchdog thresholds
+│   └── agent.py                 # Async Edge Agent Daemon & Network Client
+├── cloud/
+│   ├── state.py                 # In-Memory Fleet State Manager & Broadcast Engine
+│   ├── main.py                  # FastAPI Application, WebSockets & REST APIs
+│   └── static/
+│       └── index.html           # Fleet Dashboard UI (Gauges, 2D Map, Teleop)
+├── docker/
+│   ├── Dockerfile.cloud         # Cloud Server Docker container
+│   └── Dockerfile.edge          # Edge Agent Docker container
+├── scripts/
+│   ├── compile_proto.py         # Script to compile .proto files
+│   └── run_sim.py               # Local multi-robot simulation stack runner
+├── docker-compose.yml           # Multi-container orchestration
+├── requirements.txt             # Project dependencies
+└── README.md                    # System documentation
+```
+
+---
+
+## 3. Core Components Implementation Details
+
+### 1. Protobuf Messaging Schema (`proto/nexus.proto`)
+Defines standardized data contracts across edge and cloud:
+- `Pose3D`: Spatial position $(x, y, z)$ and orientation quaternions.
+- `Twist3D`: Linear $(\dot{x}, \dot{y}, \dot{z})$ and angular $(\omega_x, \omega_y, \omega_z)$ velocities.
+- `BatteryState`: Voltage, percentage, and charging state.
+- `JointState`: Joint names, positions, velocities, and torques.
+- `RobotTelemetry`: Full frame telemetry snapshot sent at up to 50 Hz.
+- `ControlCommand`: Target velocity or position vectors with mode requests.
+
+### 2. Hardware Abstraction Layer (`hal/base.py`)
+Provides normalized dataclasses and abstract base class `AbstractHardwarePlugin`:
+```python
+class AbstractHardwarePlugin(ABC):
+    @abstractmethod
+    async def initialize(self) -> bool: ...
+    @abstractmethod
+    async def read_telemetry(self) -> RobotTelemetryData: ...
+    @abstractmethod
+    async def send_command(self, command: MotorCommandData) -> bool: ...
+    @abstractmethod
+    async def emergency_stop(self) -> bool: ...
+    @abstractmethod
+    async def shutdown(self) -> None: ...
+```
+
+### 3. Edge Agent Daemon (`edge/agent.py`)
+Runs on the edge computer (Jetson / Raspberry Pi / x86 edge node):
+- Reads HAL telemetry at configured frequencies.
+- Manages connection resilience with automatic retry exponential backoff.
+- Executes safety watchdog logic (triggers hardware E-stop if connection drops in autonomous mode).
+
+### 4. Cloud Fleet Server (`cloud/main.py`)
+FastAPI application featuring:
+- High-throughput WebSocket endpoints (`/ws/telemetry/{robot_id}` and `/ws/dashboard`).
+- REST endpoints (`/api/v1/robots`, `/api/v1/robots/{robot_id}/command`, `/api/v1/fleet/estop`).
+
+---
+
+## 4. Quickstart & Verification
+
+### Option A: Local Python Runner (No Docker required)
+
+1. **Install dependencies**:
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+2. **Run complete simulation stack**:
+   ```bash
+   python scripts/run_sim.py
+   ```
+
+3. **Access Fleet Dashboard**:
+   Open browser at [http://localhost:8000](http://localhost:8000)
+
+---
+
+### Option B: Containerized Execution with Docker Compose
+
+1. **Build and launch multi-robot simulation stack**:
+   ```bash
+   docker-compose up --build
+   ```
+
+2. This orchestrates:
+   - `nexus-cloud-server` on port `8000`
+   - `nexus-edge-rover-alpha` (Differential Drive mobile base simulator)
+   - `nexus-edge-arm-beta` (6-DOF Robotic Arm manipulator simulator)
+
+3. Open [http://localhost:8000](http://localhost:8000) to inspect live telemetry and teleoperate the fleet!
+
+---
+
+## 5. Licensing & Commercial Framework
+
+NexusOS is distributed under the **NexusOS Community & Commercial License (NCL v1.0)** ([`LICENSE.md`](LICENSE.md)).
+
+### Dual-Licensing Model Overview
+- **Community Tier (Free / Open Source)**: Free for non-commercial, personal, evaluation, academic research, and copyleft open-source projects complying with AGPL-3.0 terms.
+- **Commercial Tier ($100K Gross Revenue Threshold)**: Any commercial entity generating **> $100,000 USD gross annual revenue** operating NexusOS in proprietary products or fleet services MUST acquire a paid Commercial License.
+
+### Software Enforcement & Safety Interlocks (`licensing/`)
+- **Runtime Validation**: The Edge Agent and Cloud Backend check active JWT commercial keys via `licensing/validator.py`.
+- **Non-Bricking Safety Fallback**: If a key is missing or expired, NexusOS enters **Evaluation Sandbox Mode**. Hardware control loops, motor drivers, and E-Stops remain **100% operational for safety**, while logging licensing compliance notices.
+
+### Automated Stripe & Usage Invoicing (`cloud/licensing_api.py`)
+- `POST /api/v1/license/verify`: Verify JWT commercial license tokens.
+- `POST /api/v1/license/report_usage`: Submit quarterly revenue/robot unit reports.
+- `POST /api/v1/webhooks/stripe`: Automated Stripe webhook handler issuing commercial license keys upon payment.
+
+---
+
+## 6. Community, Feedback & Support
+
+We welcome feedback, hardware driver requests, bug reports, and contributions!
+
+- **Report Bugs & Issues**: Open a ticket on [GitHub Issues](https://github.com/aachcoder47/NexusOS/issues).
+- **Request New HAL Plugins**: Request support for your robot hardware (ODrive, VESC, CAN bus, ROS 2 bridges) via [Feature Request](https://github.com/aachcoder47/NexusOS/issues/new?template=feature_request.md).
+- **Contributing**: Check out [`CONTRIBUTING.md`](CONTRIBUTING.md) for contribution guidelines.
+

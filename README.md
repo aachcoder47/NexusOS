@@ -1,5 +1,8 @@
 # NexusOS: Universal OS & Fleet Middleware for Heterogeneous Robots
 
+[![PyPI version](https://img.shields.io/pypi/v/nexusos-fleet.svg?color=brightgreen&label=PyPI)](https://pypi.org/project/nexusos-fleet/)
+[![PyPI downloads](https://img.shields.io/pypi/dm/nexusos-fleet.svg?color=blue)](https://pypi.org/project/nexusos-fleet/)
+[![Python](https://img.shields.io/pypi/pyversions/nexusos-fleet.svg)](https://pypi.org/project/nexusos-fleet/)
 [![License: NCL-1.0](https://img.shields.io/badge/License-NCL--1.0_Dual-blue.svg)](LICENSE.md)
 
 > **Solving the "Tower of Babel" in Robotics** through zero-dependency hardware abstraction, WAN-resilient telemetry streaming, and unified cloud fleet orchestration.
@@ -118,11 +121,27 @@ FastAPI application featuring:
 
 ## 4. Quickstart & Verification
 
+### ⚡ Install from PyPI
+
+```bash
+pip install nexusos-fleet
+```
+
+> Full package on PyPI → **[pypi.org/project/nexusos-fleet](https://pypi.org/project/nexusos-fleet/1.0.0/)**
+
+---
+
 ### Option A: Local Python Runner (No Docker required)
 
-1. **Install dependencies**:
+1. **Install via pip** (recommended):
    ```bash
-   pip install -r requirements.txt
+   pip install nexusos-fleet
+   ```
+   *or clone and install from source:*
+   ```bash
+   git clone https://github.com/aachcoder47/NexusOS.git
+   cd NexusOS
+   pip install -e .
    ```
 
 2. **Run complete simulation stack**:

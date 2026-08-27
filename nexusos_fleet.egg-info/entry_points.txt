@@ -1,0 +1,3 @@
+[console_scripts]
+nexusos-gui = scripts.desktop_gui:main
+nexusos-sim = scripts.run_sim:main

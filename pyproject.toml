@@ -3,7 +3,7 @@ requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "nexusos"
+name = "nexusos-fleet"
 version = "1.0.0"
 description = "Universal Hardware Abstraction Layer & Cloud Fleet Middleware for Heterogeneous Robots"
 readme = "README.md"

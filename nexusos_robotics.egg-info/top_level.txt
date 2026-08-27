@@ -1,0 +1,5 @@
+cloud
+edge
+hal
+licensing
+proto
