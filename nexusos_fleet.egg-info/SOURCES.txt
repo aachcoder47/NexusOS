@@ -6,6 +6,11 @@ cloud/__init__.py
 cloud/licensing_api.py
 cloud/main.py
 cloud/state.py
+cloud/static/index.html
+demo/custom_hardware_plugin.py
+demo/live_dashboard_client.py
+demo/main.py
+demo/mission_controller.py
 edge/__init__.py
 edge/agent.py
 edge/config.py
@@ -26,4 +31,7 @@ nexusos_fleet.egg-info/dependency_links.txt
 nexusos_fleet.egg-info/entry_points.txt
 nexusos_fleet.egg-info/requires.txt
 nexusos_fleet.egg-info/top_level.txt
+scripts/compile_proto.py
+scripts/desktop_gui.py
+scripts/run_sim.py
 tests/test_licensing.py

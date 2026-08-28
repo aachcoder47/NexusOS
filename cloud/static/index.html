@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>NexusOS | Universal Fleet Management Dashboard</title>
+  <title>NexusOS | 3D Universal Fleet Management Digital Twin</title>
 
   <!-- Google Fonts: Inter & JetBrains Mono -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -13,15 +13,19 @@
   <!-- Lucide Icons -->
   <script src="https://unpkg.com/lucide@latest"></script>
 
+  <!-- Three.js 3D Engine & OrbitControls -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
   <style>
     :root {
-      --bg-dark: #090d16;
-      --bg-panel: rgba(18, 25, 41, 0.75);
-      --bg-card: rgba(30, 41, 65, 0.6);
+      --bg-dark: #070a12;
+      --bg-panel: rgba(15, 23, 42, 0.8);
+      --bg-card: rgba(30, 41, 65, 0.65);
       --border-panel: rgba(255, 255, 255, 0.08);
-      --border-panel-hover: rgba(56, 189, 248, 0.3);
+      --border-panel-hover: rgba(56, 189, 248, 0.4);
       --accent-cyan: #38bdf8;
-      --accent-cyan-glow: rgba(56, 189, 248, 0.25);
+      --accent-cyan-glow: rgba(56, 189, 248, 0.3);
       --accent-emerald: #10b981;
       --accent-rose: #f43f5e;
       --accent-amber: #f59e0b;
@@ -51,9 +55,8 @@
       overflow-x: hidden;
     }
 
-    /* Header Styling */
     header {
-      background: rgba(15, 23, 42, 0.85);
+      background: rgba(15, 23, 42, 0.9);
       backdrop-filter: blur(12px);
       border-bottom: 1px solid var(--border-panel);
       padding: 12px 24px;
@@ -72,15 +75,15 @@
     }
 
     .brand-logo {
-      width: 36px;
-      height: 36px;
+      width: 38px;
+      height: 38px;
       background: linear-gradient(135deg, var(--accent-cyan), var(--accent-purple));
       border-radius: 8px;
       display: flex;
       align-items: center;
       justify-content: center;
       color: #fff;
-      box-shadow: 0 0 15px var(--accent-cyan-glow);
+      box-shadow: 0 0 16px var(--accent-cyan-glow);
     }
 
     .brand-title h1 {
@@ -104,7 +107,7 @@
     .header-stats {
       display: flex;
       align-items: center;
-      gap: 20px;
+      gap: 16px;
     }
 
     .stat-pill {
@@ -134,7 +137,7 @@
 
     .btn-estop-global {
       background: linear-gradient(135deg, #e11d48, #9f1239);
-      border: 1px solid rgba(244, 63, 94, 0.4);
+      border: 1px solid rgba(244, 63, 94, 0.5);
       color: #fff;
       font-weight: 700;
       font-size: 13px;
@@ -144,25 +147,25 @@
       display: flex;
       align-items: center;
       gap: 8px;
-      box-shadow: 0 0 15px rgba(225, 29, 72, 0.4);
+      box-shadow: 0 0 16px rgba(225, 29, 72, 0.4);
       transition: all 0.2s ease;
     }
 
     .btn-estop-global:hover {
       transform: scale(1.03);
-      box-shadow: 0 0 25px rgba(225, 29, 72, 0.7);
+      box-shadow: 0 0 25px rgba(225, 29, 72, 0.8);
     }
 
-    /* Dashboard Layout */
+    /* Dashboard Grid Layout */
     .dashboard-container {
       display: grid;
-      grid-template-columns: 320px 1fr 340px;
+      grid-template-columns: 310px 1fr 340px;
       gap: 16px;
       padding: 16px 24px;
       flex: 1;
     }
 
-    @media (max-width: 1200px) {
+    @media (max-width: 1280px) {
       .dashboard-container {
         grid-template-columns: 1fr;
       }
@@ -176,8 +179,8 @@
       padding: 16px;
       display: flex;
       flex-direction: column;
-      gap: 16px;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+      gap: 14px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.4);
     }
 
     .panel-header {
@@ -199,13 +202,13 @@
       gap: 8px;
     }
 
-    /* Robot Fleet Cards */
+    /* Robot Card Directory */
     .robot-list {
       display: flex;
       flex-direction: column;
       gap: 10px;
       overflow-y: auto;
-      max-height: calc(100vh - 160px);
+      max-height: calc(100vh - 180px);
     }
 
     .robot-card {
@@ -224,15 +227,15 @@
 
     .robot-card.active {
       border-color: var(--accent-cyan);
-      background: rgba(56, 189, 248, 0.1);
-      box-shadow: 0 0 12px var(--accent-cyan-glow);
+      background: rgba(56, 189, 248, 0.12);
+      box-shadow: 0 0 16px var(--accent-cyan-glow);
     }
 
     .robot-card-top {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      margin-bottom: 8px;
+      margin-bottom: 6px;
     }
 
     .robot-name {
@@ -254,11 +257,11 @@
     .badge-estop { background: rgba(244, 63, 94, 0.2); color: var(--accent-rose); }
 
     .battery-bar-container {
-      background: rgba(0, 0, 0, 0.3);
+      background: rgba(0, 0, 0, 0.4);
       height: 6px;
       border-radius: 3px;
       overflow: hidden;
-      margin-top: 6px;
+      margin-top: 8px;
     }
 
     .battery-bar-fill {
@@ -268,43 +271,71 @@
       transition: width 0.3s ease;
     }
 
-    /* Main Trajectory Canvas & Telemetry */
-    .map-container {
+    /* 3D Viewport */
+    .viewport-3d {
       position: relative;
-      background: #060911;
+      background: #04060a;
       border-radius: 10px;
       border: 1px solid var(--border-panel);
       flex: 1;
-      min-height: 380px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      min-height: 440px;
       overflow: hidden;
     }
 
-    canvas#trajectoryCanvas {
+    #threeCanvasContainer {
       width: 100%;
       height: 100%;
+      min-height: 440px;
       display: block;
     }
 
-    .map-overlay {
+    .viewport-overlay {
       position: absolute;
       top: 12px;
       left: 12px;
-      background: rgba(15, 23, 42, 0.8);
+      background: rgba(15, 23, 42, 0.85);
+      backdrop-filter: blur(8px);
       border: 1px solid var(--border-panel);
-      padding: 8px 12px;
+      padding: 8px 14px;
       border-radius: 8px;
       font-family: var(--font-mono);
       font-size: 11px;
-      color: var(--accent-cyan);
+      pointer-events: none;
+      z-index: 10;
     }
 
-    /* Telemetry Metrics Grid */
+    .view-controls {
+      position: absolute;
+      bottom: 12px;
+      right: 12px;
+      display: flex;
+      gap: 6px;
+      z-index: 10;
+    }
+
+    .btn-view {
+      background: rgba(15, 23, 42, 0.85);
+      border: 1px solid var(--border-panel);
+      color: var(--text-main);
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-family: var(--font-mono);
+      cursor: pointer;
+      backdrop-filter: blur(8px);
+      transition: all 0.15s ease;
+    }
+
+    .btn-view:hover, .btn-view.active {
+      border-color: var(--accent-cyan);
+      background: rgba(56, 189, 248, 0.2);
+      color: #fff;
+    }
+
+    /* Telemetry Metrics */
     .metrics-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      grid-template-columns: repeat(4, 1fr);
       gap: 10px;
     }
 
@@ -312,7 +343,7 @@
       background: var(--bg-card);
       border: 1px solid var(--border-panel);
       border-radius: 8px;
-      padding: 10px;
+      padding: 10px 12px;
     }
 
     .metric-label {
@@ -329,7 +360,7 @@
       color: var(--text-main);
     }
 
-    /* Teleoperation Control Panel */
+    /* Teleop Controls */
     .teleop-panel {
       display: flex;
       flex-direction: column;
@@ -342,7 +373,7 @@
       grid-template-rows: repeat(3, 54px);
       gap: 6px;
       justify-content: center;
-      margin: 10px 0;
+      margin: 8px 0;
     }
 
     .btn-dpad {
@@ -360,7 +391,7 @@
 
     .btn-dpad:hover {
       border-color: var(--accent-cyan);
-      background: rgba(56, 189, 248, 0.2);
+      background: rgba(56, 189, 248, 0.25);
     }
 
     .btn-dpad:active {
@@ -392,7 +423,7 @@
       display: flex;
       flex-direction: column;
       gap: 8px;
-      max-height: 200px;
+      max-height: 180px;
       overflow-y: auto;
     }
 
@@ -402,9 +433,10 @@
       justify-content: space-between;
       font-family: var(--font-mono);
       font-size: 12px;
-      background: rgba(0,0,0,0.2);
+      background: rgba(0,0,0,0.3);
       padding: 6px 10px;
       border-radius: 6px;
+      border: 1px solid rgba(255,255,255,0.04);
     }
   </style>
 </head>
@@ -414,11 +446,11 @@
   <header>
     <div class="brand">
       <div class="brand-logo">
-        <i data-lucide="cpu"></i>
+        <i data-lucide="box"></i>
       </div>
       <div class="brand-title">
-        <h1>NexusOS Fleet Controller</h1>
-        <p>Universal Heterogeneous Robotics Middleware</p>
+        <h1>NexusOS 3D Fleet Visualizer</h1>
+        <p>Universal Robotics Digital Twin Engine (v1.0.2)</p>
       </div>
     </div>
 
@@ -433,7 +465,7 @@
       </div>
       <div class="stat-pill">
         <i data-lucide="activity" style="width: 14px; height: 14px; color: var(--accent-purple)"></i>
-        <span id="telemetryRateCount">0</span> Frames
+        <span id="telemetryRateCount">0</span> MsgPack Frames
       </div>
       <button class="btn-estop-global" onclick="triggerGlobalEstop()">
         <i data-lucide="shield-alert"></i>
@@ -445,7 +477,7 @@
   <!-- Main Dashboard Layout -->
   <div class="dashboard-container">
 
-    <!-- Left Panel: Fleet List -->
+    <!-- Left Panel: Fleet Directory -->
     <div class="panel">
       <div class="panel-header">
         <h2><i data-lucide="list"></i> Fleet Directory</h2>
@@ -457,20 +489,28 @@
       </div>
     </div>
 
-    <!-- Center Panel: Live Trajectory & Telemetry -->
+    <!-- Center Panel: 3D WebGL Digital Twin & Real-time Metrics -->
     <div class="panel">
       <div class="panel-header">
-        <h2 id="selectedRobotTitle"><i data-lucide="navigation"></i> Robot Trajectory Visualizer</h2>
-        <div class="stat-pill" id="selectedRobotTypePill" style="display:none;">
+        <h2 id="selectedRobotTitle"><i data-lucide="layers"></i> 3D Real-time Digital Twin</h2>
+        <div class="stat-pill" id="selectedRobotTypePill" style="display:none; font-family: var(--font-mono); font-size: 11px;">
           TYPE: <span id="selectedRobotType">DIFF_DRIVE</span>
         </div>
       </div>
 
-      <!-- 2D Canvas Visualizer -->
-      <div class="map-container">
-        <canvas id="trajectoryCanvas"></canvas>
-        <div class="map-overlay">
-          POSE X: <span id="mapX">0.00</span> | Y: <span id="mapY">0.00</span> | YAW: <span id="mapYaw">0.00</span> rad
+      <!-- 3D Three.js Viewport Container -->
+      <div class="viewport-3d" id="viewportContainer">
+        <div id="threeCanvasContainer"></div>
+
+        <div class="viewport-overlay">
+          <div>POS XYZ: <span id="mapX" style="color: var(--accent-cyan)">0.00</span>, <span id="mapY" style="color: var(--accent-cyan)">0.00</span>, <span id="mapZ" style="color: var(--accent-cyan)">0.00</span> m</div>
+          <div>ORIENTATION: <span id="mapYaw" style="color: var(--accent-purple)">0.00</span> rad | <span id="mapAlt" style="color: var(--accent-emerald)">0.00</span> m ALT</div>
+        </div>
+
+        <div class="view-controls">
+          <button class="btn-view active" id="btnViewOrbit" onclick="setCameraMode('orbit')"><i data-lucide="orbit"></i> 3D Orbit</button>
+          <button class="btn-view" id="btnViewTop" onclick="setCameraMode('top')"><i data-lucide="compass"></i> Top View</button>
+          <button class="btn-view" id="btnViewFollow" onclick="setCameraMode('follow')"><i data-lucide="video"></i> Follow Cam</button>
         </div>
       </div>
 
@@ -502,8 +542,8 @@
       </div>
 
       <div id="teleopControlArea">
-        <div style="font-size: 13px; color: var(--text-muted); margin-bottom: 10px;">
-          Target Velocity Commands:
+        <div style="font-size: 13px; color: var(--text-muted); margin-bottom: 6px;">
+          Manual Command Stream:
         </div>
 
         <!-- D-Pad -->
@@ -521,21 +561,21 @@
           <div class="empty-dpad"></div>
         </div>
 
-        <div class="slider-group" style="margin-top: 15px;">
+        <div class="slider-group" style="margin-top: 10px;">
           <label>Max Linear Speed: <span id="linearSpeedVal">0.5 m/s</span></label>
           <input type="range" id="linearSpeedSlider" min="0.1" max="2.0" step="0.1" value="0.5" oninput="document.getElementById('linearSpeedVal').innerText=this.value+' m/s'">
         </div>
 
-        <div class="slider-group" style="margin-top: 15px;">
+        <div class="slider-group" style="margin-top: 10px;">
           <label>Max Angular Speed: <span id="angularSpeedVal">0.8 rad/s</span></label>
           <input type="range" id="angularSpeedSlider" min="0.1" max="3.0" step="0.1" value="0.8" oninput="document.getElementById('angularSpeedVal').innerText=this.value+' rad/s'">
         </div>
 
         <!-- Joints Monitor/Control -->
-        <div style="margin-top: 20px;">
-          <div style="font-size: 13px; color: var(--text-muted); margin-bottom: 8px;">Joint States:</div>
+        <div style="margin-top: 16px;">
+          <div style="font-size: 13px; color: var(--text-muted); margin-bottom: 8px;">Joint Position Kinematics:</div>
           <div class="joint-list" id="jointStateList">
-            <div style="font-size: 11px; color: var(--text-muted);">No joint data for selected robot.</div>
+            <div style="font-size: 11px; color: var(--text-muted);">No active joints for selected robot.</div>
           </div>
         </div>
       </div>
@@ -544,28 +584,328 @@
   </div>
 
   <script>
-    // Initialize Lucide icons
     lucide.createIcons();
 
     // State Variables
     let ws = null;
     let fleetData = {};
     let selectedRobotId = null;
-    let trajectoryHistory = {}; // robot_id -> array of {x, y}
+    let cameraMode = 'orbit'; // 'orbit', 'top', 'follow'
 
-    // Canvas Setup
-    const canvas = document.getElementById('trajectoryCanvas');
-    const ctx = canvas.getContext('2d');
+    // -------------------------------------------------------------
+    // THREE.JS 3D DIGITAL TWIN SCENE SETUP
+    // -------------------------------------------------------------
+    let scene, camera, renderer, controls;
+    let robot3DModels = {}; // robot_id -> THREE.Group
+    let trajectoryLines = {}; // robot_id -> THREE.Line
+    let trajectoryPoints = {}; // robot_id -> Array of THREE.Vector3
 
-    function resizeCanvas() {
-      const rect = canvas.parentElement.getBoundingClientRect();
-      canvas.width = rect.width;
-      canvas.height = rect.height;
+    function init3DScene() {
+      const container = document.getElementById('threeCanvasContainer');
+      const width = container.clientWidth || 600;
+      const height = container.clientHeight || 440;
+
+      // 1. Scene
+      scene = new THREE.Scene();
+      scene.background = new THREE.Color(0x060911);
+      scene.fog = new THREE.FogExp2(0x060911, 0.04);
+
+      // 2. Camera
+      camera = new THREE.PerspectiveCamera(50, width / height, 0.1, 1000);
+      camera.position.set(0, 6, 8);
+
+      // 3. Renderer
+      renderer = new THREE.WebGLRenderer({ antialias: true });
+      renderer.setSize(width, height);
+      renderer.setPixelRatio(window.devicePixelRatio);
+      renderer.shadowMap.enabled = true;
+      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      container.appendChild(renderer.domElement);
+
+      // 4. Controls
+      controls = new THREE.OrbitControls(camera, renderer.domElement);
+      controls.enableDamping = true;
+      controls.dampingFactor = 0.05;
+      controls.maxPolarAngle = Math.PI / 2 - 0.05; // Do not go below floor
+
+      // 5. Lighting
+      const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+      scene.add(ambientLight);
+
+      const dirLight = new THREE.DirectionalLight(0x38bdf8, 1.2);
+      dirLight.position.set(10, 20, 10);
+      dirLight.castShadow = true;
+      scene.add(dirLight);
+
+      const pointLight = new THREE.PointLight(0xa855f7, 2, 20);
+      pointLight.position.set(0, 4, 0);
+      scene.add(pointLight);
+
+      // 6. Cyber Grid Floor
+      const gridHelper = new THREE.GridHelper(40, 40, 0x38bdf8, 0x1e293b);
+      gridHelper.position.y = 0;
+      scene.add(gridHelper);
+
+      // Coordinate Axes Indicator
+      const axesHelper = new THREE.AxesHelper(2);
+      scene.add(axesHelper);
+
+      // Handle Window Resize
+      window.addEventListener('resize', onWindowResize);
+
+      // Start Animation Loop
+      animate3D();
     }
-    window.addEventListener('resize', resizeCanvas);
-    resizeCanvas();
 
-    // Connect WebSocket to Cloud Backend
+    function onWindowResize() {
+      const container = document.getElementById('threeCanvasContainer');
+      if (!container || !renderer || !camera) return;
+      const width = container.clientWidth;
+      const height = container.clientHeight;
+      camera.aspect = width / height;
+      camera.updateProjectionMatrix();
+      renderer.setSize(width, height);
+    }
+
+    // -------------------------------------------------------------
+    // 3D PROCEDURAL ROBOT MODELS
+    // -------------------------------------------------------------
+
+    // 1. Differential Drive Rover Model
+    function createRoverModel() {
+      const group = new THREE.Group();
+
+      // Main Chassis
+      const bodyGeo = new THREE.BoxGeometry(0.8, 0.3, 1.0);
+      const bodyMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, metalness: 0.8, roughness: 0.2 });
+      const body = new THREE.Mesh(bodyGeo, bodyMat);
+      body.position.y = 0.25;
+      body.castShadow = true;
+      group.add(body);
+
+      // Top Sensor Pod / Lidar
+      const lidarGeo = new THREE.CylinderGeometry(0.12, 0.12, 0.15, 16);
+      const lidarMat = new THREE.MeshStandardMaterial({ color: 0x38bdf8, emissive: 0x38bdf8, emissiveIntensity: 0.6 });
+      const lidar = new THREE.Mesh(lidarGeo, lidarMat);
+      lidar.position.set(0, 0.45, 0.2);
+      group.add(lidar);
+
+      // Wheels
+      const wheelGeo = new THREE.CylinderGeometry(0.2, 0.2, 0.12, 16);
+      const wheelMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.9 });
+      wheelGeo.rotateZ(Math.PI / 2);
+
+      const positions = [
+        [-0.45, 0.2, 0.3],
+        [0.45, 0.2, 0.3],
+        [-0.45, 0.2, -0.3],
+        [0.45, 0.2, -0.3]
+      ];
+
+      positions.forEach(pos => {
+        const wheel = new THREE.Mesh(wheelGeo, wheelMat);
+        wheel.position.set(...pos);
+        wheel.castShadow = true;
+        group.add(wheel);
+      });
+
+      // Directional Heading Indicator
+      const arrowGeo = new THREE.ConeGeometry(0.15, 0.4, 8);
+      arrowGeo.rotateX(Math.PI / 2);
+      const arrowMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8 });
+      const arrow = new THREE.Mesh(arrowGeo, arrowMat);
+      arrow.position.set(0, 0.45, 0.6);
+      group.add(arrow);
+
+      return group;
+    }
+
+    // 2. 6-DOF Robotic Arm Model
+    function createRoboticArmModel() {
+      const armGroup = new THREE.Group();
+
+      // Base Pedestal
+      const baseGeo = new THREE.CylinderGeometry(0.4, 0.45, 0.2, 16);
+      const baseMat = new THREE.MeshStandardMaterial({ color: 0x334155, metalness: 0.7 });
+      const base = new THREE.Mesh(baseGeo, baseMat);
+      base.position.y = 0.1;
+      armGroup.add(base);
+
+      // Joint 1: Swivel Base
+      const j1Group = new THREE.Group();
+      j1Group.position.y = 0.2;
+
+      // Link 1 (Lower Arm)
+      const link1Geo = new THREE.BoxGeometry(0.18, 0.7, 0.18);
+      const linkMat = new THREE.MeshStandardMaterial({ color: 0x38bdf8, metalness: 0.6, roughness: 0.3 });
+      const link1 = new THREE.Mesh(link1Geo, linkMat);
+      link1.position.y = 0.35;
+      link1.castShadow = true;
+      j1Group.add(link1);
+
+      // Joint 2 (Elbow)
+      const j2Group = new THREE.Group();
+      j2Group.position.y = 0.7;
+
+      // Link 2 (Forearm)
+      const link2Geo = new THREE.BoxGeometry(0.14, 0.6, 0.14);
+      const link2 = new THREE.Mesh(link2Geo, linkMat);
+      link2.position.y = 0.3;
+      link2.castShadow = true;
+      j2Group.add(link2);
+
+      // Wrist & Gripper
+      const wristGeo = new THREE.CylinderGeometry(0.08, 0.08, 0.15, 12);
+      const wristMat = new THREE.MeshStandardMaterial({ color: 0xa855f7, emissive: 0xa855f7, emissiveIntensity: 0.4 });
+      const wrist = new THREE.Mesh(wristGeo, wristMat);
+      wrist.position.y = 0.65;
+      j2Group.add(wrist);
+
+      j1Group.add(j2Group);
+      armGroup.add(j1Group);
+
+      armGroup.userData = { j1: j1Group, j2: j2Group, wrist: wrist };
+      return armGroup;
+    }
+
+    // 3. Quadcopter Drone Model
+    function createDroneModel() {
+      const droneGroup = new THREE.Group();
+
+      // Fuselage Center
+      const bodyGeo = new THREE.BoxGeometry(0.3, 0.1, 0.3);
+      const bodyMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, metalness: 0.9, roughness: 0.1 });
+      const body = new THREE.Mesh(bodyGeo, bodyMat);
+      droneGroup.add(body);
+
+      // 4 Carbon Arms
+      const armGeo = new THREE.CylinderGeometry(0.02, 0.02, 0.7, 8);
+      armGeo.rotateZ(Math.PI / 4);
+      const armMat = new THREE.MeshStandardMaterial({ color: 0x475569 });
+      const arm1 = new THREE.Mesh(armGeo, armMat);
+      droneGroup.add(arm1);
+
+      const arm2 = new THREE.Mesh(armGeo, armMat);
+      arm2.rotation.y = Math.PI / 2;
+      droneGroup.add(arm2);
+
+      // 4 Rotors
+      const rotorPositions = [[0.25, 0.06, 0.25], [-0.25, 0.06, 0.25], [0.25, 0.06, -0.25], [-0.25, 0.06, -0.25]];
+      const rotors = [];
+      rotorPositions.forEach(pos => {
+        const bladeGeo = new THREE.BoxGeometry(0.3, 0.01, 0.03);
+        const bladeMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8 });
+        const blade = new THREE.Mesh(bladeGeo, bladeMat);
+        blade.position.set(...pos);
+        droneGroup.add(blade);
+        rotors.push(blade);
+      });
+
+      droneGroup.userData = { rotors: rotors };
+      return droneGroup;
+    }
+
+    // -------------------------------------------------------------
+    // ANIMATION & 3D TELEMETRY UPDATES
+    // -------------------------------------------------------------
+    function animate3D() {
+      requestAnimationFrame(animate3D);
+
+      // Spin Drone Rotors
+      Object.values(robot3DModels).forEach(model => {
+        if (model.userData && model.userData.rotors) {
+          model.userData.rotors.forEach(r => r.rotation.y += 0.4);
+        }
+      });
+
+      // Camera Follow Mode
+      if (cameraMode === 'follow' && selectedRobotId && robot3DModels[selectedRobotId]) {
+        const targetPos = robot3DModels[selectedRobotId].position;
+        camera.position.lerp(new THREE.Vector3(targetPos.x, targetPos.y + 3, targetPos.z + 5), 0.05);
+        controls.target.copy(targetPos);
+      }
+
+      controls.update();
+      renderer.render(scene, camera);
+    }
+
+    function update3DSceneFromTelemetry() {
+      if (!scene) return;
+
+      Object.keys(fleetData).forEach(rId => {
+        const r = fleetData[rId];
+        const posX = r.pose?.position?.x || 0;
+        const posY = r.pose?.position?.y || 0;
+        const posZ = r.pose?.position?.z || 0;
+        const yaw = r.pose?.orientation_rpy?.yaw || r.pose?.orientation_rpy?.z || 0;
+        const rType = r.robot_type || 'GENERIC';
+
+        // 1. Instantiate 3D Model if needed
+        if (!robot3DModels[rId]) {
+          let model;
+          if (rType === 'ROBOTIC_ARM') {
+            model = createRoboticArmModel();
+          } else if (rType === 'DRONE' || posZ > 0.1) {
+            model = createDroneModel();
+          } else {
+            model = createRoverModel();
+          }
+          scene.add(model);
+          robot3DModels[rId] = model;
+
+          // Trajectory Line
+          trajectoryPoints[rId] = [];
+          const lineGeo = new THREE.BufferGeometry();
+          const lineMat = new THREE.LineBasicMaterial({ color: (rId === selectedRobotId ? 0x38bdf8 : 0xa855f7), linewidth: 2 });
+          const line = new THREE.Line(lineGeo, lineMat);
+          scene.add(line);
+          trajectoryLines[rId] = line;
+        }
+
+        // 2. Update Position & Orientation
+        const model = robot3DModels[rId];
+        // In 3D: X is right/left, Y is altitude (up), Z is forward/back
+        model.position.set(posX, posZ, -posY);
+        model.rotation.y = -yaw;
+
+        // If Arm: Update Joint Angles
+        if (model.userData && model.userData.j1 && r.joints && r.joints.positions) {
+          const jPositions = r.joints.positions;
+          if (jPositions.length >= 2) {
+            model.userData.j1.rotation.y = jPositions[0];
+            model.userData.j2.rotation.z = jPositions[1];
+          }
+        }
+
+        // 3. Update Trajectory Ribbon
+        const points = trajectoryPoints[rId];
+        points.push(new THREE.Vector3(posX, posZ + 0.05, -posY));
+        if (points.length > 250) points.shift();
+
+        trajectoryLines[rId].geometry.setFromPoints(points);
+      });
+    }
+
+    function setCameraMode(mode) {
+      cameraMode = mode;
+      document.querySelectorAll('.btn-view').forEach(b => b.classList.remove('active'));
+
+      if (mode === 'orbit') {
+        document.getElementById('btnViewOrbit').classList.add('active');
+        camera.position.set(0, 6, 8);
+        controls.target.set(0, 0, 0);
+      } else if (mode === 'top') {
+        document.getElementById('btnViewTop').classList.add('active');
+        camera.position.set(0, 15, 0.001);
+        controls.target.set(0, 0, 0);
+      } else if (mode === 'follow') {
+        document.getElementById('btnViewFollow').classList.add('active');
+      }
+    }
+
+    // -------------------------------------------------------------
+    // WEBSOCKET TELEMETRY CONNECTION
+    // -------------------------------------------------------------
     function connectWebSocket() {
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
       const wsUrl = `${protocol}//${window.location.host}/ws/dashboard`;
@@ -574,7 +914,7 @@
 
       ws.onopen = () => {
         document.getElementById('socketStatusDot').style.backgroundColor = 'var(--accent-emerald)';
-        document.getElementById('socketStatusText').innerText = 'CONNECTED';
+        document.getElementById('socketStatusText').innerText = 'STREAMING';
       };
 
       ws.onmessage = (event) => {
@@ -584,7 +924,6 @@
           document.getElementById('activeRobotsCount').innerText = msg.active_robots_count || 0;
           document.getElementById('telemetryRateCount').innerText = msg.total_telemetry_frames || 0;
 
-          // Auto select first robot if none selected
           const robotIds = Object.keys(fleetData);
           if (!selectedRobotId && robotIds.length > 0) {
             selectedRobotId = robotIds[0];
@@ -592,14 +931,14 @@
 
           updateRobotListUI();
           updateSelectedRobotUI();
-          renderTrajectoryCanvas();
+          update3DSceneFromTelemetry();
         }
       };
 
       ws.onclose = () => {
         document.getElementById('socketStatusDot').style.backgroundColor = 'var(--accent-rose)';
-        document.getElementById('socketStatusText').innerText = 'DISCONNECTED';
-        setTimeout(connectWebSocket, 3000);
+        document.getElementById('socketStatusText').innerText = 'RECONNECTING';
+        setTimeout(connectWebSocket, 2500);
       };
     }
 
@@ -617,7 +956,7 @@
         const r = fleetData[rId];
         const isSelected = (rId === selectedRobotId);
         const mode = r.mode || 'UNKNOWN';
-        const batteryPct = r.battery ? r.battery.percentage : 100;
+        const batteryPct = r.battery ? (r.battery.percentage || r.battery.soc_percentage || 100) : 100;
         let badgeClass = 'badge-manual';
         if (mode === 'AUTONOMOUS') badgeClass = 'badge-auto';
         if (mode === 'EMERGENCY_STOP') badgeClass = 'badge-estop';
@@ -650,30 +989,27 @@
       if (!selectedRobotId || !fleetData[selectedRobotId]) return;
       const r = fleetData[selectedRobotId];
 
-      document.getElementById('selectedRobotTitle').innerText = `Robot: ${selectedRobotId}`;
+      document.getElementById('selectedRobotTitle').innerHTML = `<i data-lucide="layers"></i> ${selectedRobotId}`;
       document.getElementById('selectedRobotTypePill').style.display = 'inline-flex';
       document.getElementById('selectedRobotType').innerText = r.robot_type || 'GENERIC';
 
       const posX = r.pose?.position?.x || 0;
       const posY = r.pose?.position?.y || 0;
-      const yaw = r.pose?.orientation_rpy?.yaw || 0;
+      const posZ = r.pose?.position?.z || 0;
+      const yaw = r.pose?.orientation_rpy?.yaw || r.pose?.orientation_rpy?.z || 0;
 
       document.getElementById('mapX').innerText = posX.toFixed(2);
       document.getElementById('mapY').innerText = posY.toFixed(2);
+      document.getElementById('mapZ').innerText = posZ.toFixed(2);
       document.getElementById('mapYaw').innerText = yaw.toFixed(2);
+      document.getElementById('mapAlt').innerText = posZ.toFixed(2);
 
       document.getElementById('valLinearVel').innerText = (r.twist?.linear?.x || 0).toFixed(2);
       document.getElementById('valAngularVel').innerText = (r.twist?.angular?.z || 0).toFixed(2);
       document.getElementById('valBatteryVoltage').innerText = (r.battery?.voltage || 0).toFixed(1) + ' V';
       document.getElementById('valStatusFlag').innerText = r.status_message || 'OK';
 
-      // Record trajectory history
-      if (!trajectoryHistory[selectedRobotId]) trajectoryHistory[selectedRobotId] = [];
-      const history = trajectoryHistory[selectedRobotId];
-      history.push({ x: posX, y: posY });
-      if (history.length > 200) history.shift();
-
-      // Render Joints list
+      // Render Joints
       const jointContainer = document.getElementById('jointStateList');
       if (r.joints && r.joints.names && r.joints.names.length > 0) {
         let jHtml = '';
@@ -689,85 +1025,9 @@
         }
         jointContainer.innerHTML = jHtml;
       } else {
-        jointContainer.innerHTML = `<div style="font-size: 11px; color: var(--text-muted);">No joint metrics available.</div>`;
+        jointContainer.innerHTML = `<div style="font-size: 11px; color: var(--text-muted);">No active joint metrics.</div>`;
       }
-    }
-
-    function renderTrajectoryCanvas() {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-      const centerX = canvas.width / 2;
-      const centerY = canvas.height / 2;
-      const scale = 40; // 40 pixels per meter
-
-      // Draw Grid Lines
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
-      ctx.lineWidth = 1;
-      for (let x = 0; x < canvas.width; x += 40) {
-        ctx.beginPath();
-        ctx.moveTo(x, 0);
-        ctx.lineTo(x, canvas.height);
-        ctx.stroke();
-      }
-      for (let y = 0; y < canvas.height; y += 40) {
-        ctx.beginPath();
-        ctx.moveTo(0, y);
-        ctx.lineTo(canvas.width, y);
-        ctx.stroke();
-      }
-
-      // Draw Origin Crosshair
-      ctx.strokeStyle = 'rgba(56, 189, 248, 0.2)';
-      ctx.beginPath();
-      ctx.moveTo(centerX - 15, centerY);
-      ctx.lineTo(centerX + 15, centerY);
-      ctx.moveTo(centerX, centerY - 15);
-      ctx.lineTo(centerX, centerY + 15);
-      ctx.stroke();
-
-      if (!selectedRobotId || !fleetData[selectedRobotId]) return;
-      const r = fleetData[selectedRobotId];
-      const posX = r.pose?.position?.x || 0;
-      const posY = r.pose?.position?.y || 0;
-      const yaw = r.pose?.orientation_rpy?.yaw || 0;
-
-      // Draw Trajectory Path History
-      const history = trajectoryHistory[selectedRobotId] || [];
-      if (history.length > 1) {
-        ctx.strokeStyle = 'var(--accent-cyan)';
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        for (let i = 0; i < history.length; i++) {
-          const px = centerX + history[i].x * scale;
-          const py = centerY - history[i].y * scale; // Invert canvas Y
-          if (i === 0) ctx.moveTo(px, py);
-          else ctx.lineTo(px, py);
-        }
-        ctx.stroke();
-      }
-
-      // Draw Robot Representation (Triangle Arrow)
-      const robotCx = centerX + posX * scale;
-      const robotCy = centerY - posY * scale;
-
-      ctx.save();
-      ctx.translate(robotCx, robotCy);
-      ctx.rotate(-yaw); // Canvas rotation
-
-      // Robot Body Glow
-      ctx.fillStyle = 'var(--accent-purple)';
-      ctx.shadowColor = 'var(--accent-purple)';
-      ctx.shadowBlur = 15;
-
-      ctx.beginPath();
-      ctx.moveTo(14, 0);
-      ctx.lineTo(-10, -10);
-      ctx.lineTo(-6, 0);
-      ctx.lineTo(-10, 10);
-      ctx.closePath();
-      ctx.fill();
-
-      ctx.restore();
+      lucide.createIcons();
     }
 
     function sendDriveCommand(linearScale, angularScale) {
@@ -794,11 +1054,13 @@
     function triggerGlobalEstop() {
       if (!ws) return;
       ws.send(JSON.stringify({ action: "GLOBAL_ESTOP" }));
-      alert("GLOBAL EMERGENCY STOP ACTIVATED!");
     }
 
-    // Start WebSocket Connection on page load
-    window.onload = connectWebSocket;
+    // Initialize WebGL Scene and WebSocket on load
+    window.onload = () => {
+      init3DScene();
+      connectWebSocket();
+    };
   </script>
 </body>
 </html>

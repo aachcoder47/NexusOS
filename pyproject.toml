@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "nexusos-fleet"
-version = "1.0.1"
+version = "1.0.2"
 description = "Universal Hardware Abstraction Layer & Cloud Fleet Middleware for Heterogeneous Robots"
 readme = "README.md"
 authors = [{ name = "NexusOS Maintainers" }]
@@ -18,7 +18,9 @@ dependencies = [
     "pydantic>=2.0.0",
     "jinja2>=3.1.0",
     "grpcio>=1.54.0",
-    "grpcio-tools>=1.54.0"
+    "grpcio-tools>=1.54.0",
+    "numpy>=1.24.0",
+    "msgpack>=1.0.5"
 ]
 
 [project.scripts]
@@ -31,4 +33,7 @@ nexusos-gui = "scripts.desktop_gui:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["hal*", "edge*", "cloud*", "proto*", "licensing*"]
+include = ["hal*", "edge*", "cloud*", "proto*", "licensing*", "scripts*", "demo*"]
+
+[tool.setuptools.package-data]
+"cloud" = ["static/*"]

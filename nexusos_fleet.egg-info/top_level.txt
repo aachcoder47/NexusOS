@@ -1,5 +1,7 @@
 cloud
+demo
 edge
 hal
 licensing
 proto
+scripts

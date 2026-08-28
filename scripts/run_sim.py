@@ -45,7 +45,7 @@ async def run_agent(robot_id: str, robot_type: RobotType):
     await agent.start()
 
 
-async def main():
+async def _async_main():
     logger.info("Starting NexusOS Local Complete Simulation Stack...")
     logger.info("Access Fleet Dashboard UI at: http://localhost:8000")
 
@@ -56,8 +56,12 @@ async def main():
     await asyncio.gather(server_task, rover_task, arm_task)
 
 
-if __name__ == "__main__":
+def main():
     try:
-        asyncio.run(main())
+        asyncio.run(_async_main())
     except KeyboardInterrupt:
         logger.info("Local simulation stopped by user.")
+
+
+if __name__ == "__main__":
+    main()
