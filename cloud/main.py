@@ -17,6 +17,7 @@ from pydantic import BaseModel
 
 from cloud.state import FleetStateManager
 from cloud.licensing_api import router as licensing_router
+from hal.base import RobotTelemetryData
 
 logging.basicConfig(
     level=logging.INFO,
@@ -151,14 +152,22 @@ async def websocket_edge_agent_telemetry(websocket: WebSocket, robot_id: str):
 
     try:
         while True:
-            data_str = await websocket.receive_text()
-            try:
-                telemetry = json.loads(data_str)
-                await fleet_state.update_robot_telemetry(robot_id, telemetry)
-            except json.JSONDecodeError:
-                logger.warning(f"Malformed JSON telemetry received from '{robot_id}'")
-
-    except WebSocketDisconnect:
+            message = await websocket.receive()
+            if "bytes" in message and message["bytes"] is not None:
+                try:
+                    telemetry_obj = RobotTelemetryData.from_msgpack(message["bytes"])
+                    await fleet_state.update_robot_telemetry(robot_id, telemetry_obj.to_dict())
+                except Exception as e:
+                    logger.warning(f"Error parsing binary telemetry from '{robot_id}': {e}")
+            elif "text" in message and message["text"] is not None:
+                try:
+                    telemetry = json.loads(message["text"])
+                    await fleet_state.update_robot_telemetry(robot_id, telemetry)
+                except json.JSONDecodeError:
+                    logger.warning(f"Malformed JSON telemetry received from '{robot_id}'")
+            elif message.get("type") == "websocket.disconnect":
+                break
+    except (WebSocketDisconnect, asyncio.CancelledError):
         logger.info(f"Edge agent WebSocket disconnected: '{robot_id}'")
     except Exception as e:
         logger.error(f"Error handling Edge WebSocket for '{robot_id}': {e}")
@@ -180,20 +189,25 @@ async def websocket_dashboard_subscriber(websocket: WebSocket):
     try:
         while True:
             # Listen for optional incoming commands from UI dashboard over socket
-            data_str = await websocket.receive_text()
-            try:
-                msg = json.loads(data_str)
-                if msg.get("action") == "COMMAND" and "robot_id" in msg:
-                    target_robot = msg["robot_id"]
-                    cmd_payload = msg.get("command", {})
-                    await fleet_state.dispatch_command(target_robot, cmd_payload)
-                elif msg.get("action") == "GLOBAL_ESTOP":
-                    await fleet_state.emergency_stop_all()
-            except json.JSONDecodeError:
-                pass
+            message = await websocket.receive()
+            if message.get("type") == "websocket.disconnect":
+                break
+            if "text" in message and message["text"] is not None:
+                try:
+                    msg = json.loads(message["text"])
+                    if msg.get("action") == "COMMAND" and "robot_id" in msg:
+                        target_robot = msg["robot_id"]
+                        cmd_payload = msg.get("command", {})
+                        await fleet_state.dispatch_command(target_robot, cmd_payload)
+                    elif msg.get("action") == "GLOBAL_ESTOP":
+                        await fleet_state.emergency_stop_all()
+                except json.JSONDecodeError:
+                    pass
 
-    except WebSocketDisconnect:
+    except (WebSocketDisconnect, asyncio.CancelledError):
         logger.info("Dashboard WebSocket client disconnected.")
+    except Exception as e:
+        logger.error(f"Dashboard WebSocket error: {e}")
     finally:
         await fleet_state.unregister_dashboard(websocket)
 

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "nexusos-fleet"
-version = "1.0.0"
+version = "1.0.1"
 description = "Universal Hardware Abstraction Layer & Cloud Fleet Middleware for Heterogeneous Robots"
 readme = "README.md"
 authors = [{ name = "NexusOS Maintainers" }]
