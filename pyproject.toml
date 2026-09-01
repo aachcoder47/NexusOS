@@ -1,39 +1,103 @@
 [build-system]
-requires = ["setuptools>=61.0"]
+requires = ["setuptools>=68.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "nexusos-fleet"
-version = "1.0.2"
-description = "Universal Hardware Abstraction Layer & Cloud Fleet Middleware for Heterogeneous Robots"
+name = "nexusos-robotics"
+version = "1.0.0"
+description = "Universal Robotics OS & Agent Context Middleware — Hardware-agnostic HAL, Fleet Orchestration, Temporal Memory, and Dual-License Enforcement"
 readme = "README.md"
-authors = [{ name = "NexusOS Maintainers" }]
-license = "AGPL-3.0-or-later"
+authors = [
+    { name = "NexusOS Maintainers", email = "hello@nexusos.io" }
+]
+license = { text = "NexusOS Community & Commercial License (NCL-1.0)" }
 requires-python = ">=3.10"
+keywords = [
+    "robotics", "ros", "hardware-abstraction", "fleet-management",
+    "autonomous-navigation", "agent-memory", "digital-twin", "grpc"
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: System :: Hardware",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Operating System :: OS Independent"
+]
+
 dependencies = [
-    "fastapi>=0.100.0",
-    "uvicorn[standard]>=0.22.0",
-    "websockets>=11.0",
-    "protobuf>=4.23.0",
-    "pydantic>=2.0.0",
+    "fastapi>=0.110.0",
+    "uvicorn[standard]>=0.27.0",
+    "websockets>=12.0",
+    "protobuf>=4.25.0",
+    "pydantic>=2.5.0",
     "jinja2>=3.1.0",
-    "grpcio>=1.54.0",
-    "grpcio-tools>=1.54.0",
-    "numpy>=1.24.0",
-    "msgpack>=1.0.5"
+    "grpcio>=1.60.0",
+    "grpcio-tools>=1.60.0",
+    "numpy>=1.26.0",
+    "msgpack>=1.0.7",
+    "aiofiles>=23.2.0",
+    "httpx>=0.26.0"
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0",
+    "pytest-cov>=5.0.0",
+    "black>=24.0.0",
+    "ruff>=0.1.0"
+]
+grpc = [
+    "grpcio>=1.60.0",
+    "grpcio-tools>=1.60.0"
 ]
 
 [project.scripts]
-nexusos-sim = "scripts.run_sim:main"
-nexusos-gui = "scripts.desktop_gui:main"
+nexusos-server   = "nexusos.server.main:main"
+nexusos-edge     = "nexusos.agent.run_edge:main"
+nexusos-license  = "nexusos.licensing.server:main"
+nexusos-sim      = "scripts.run_sim:main"
 
 [project.urls]
-"Homepage" = "https://github.com/aachcoder47/NexusOS"
-"Bug Tracker" = "https://github.com/aachcoder47/NexusOS/issues"
+"Homepage"    = "https://nexusos.io"
+"Repository"  = "https://github.com/nexusos-robotics/NexusOS"
+"Bug Tracker" = "https://github.com/nexusos-robotics/NexusOS/issues"
+"Licensing"   = "https://nexusos.io/licensing"
+"Discord"     = "https://discord.gg/nexusos"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["hal*", "edge*", "cloud*", "proto*", "licensing*", "scripts*", "demo*"]
+include = [
+    "nexusos*",
+    "hal*",
+    "edge*",
+    "cloud*",
+    "proto*",
+    "licensing*",
+    "scripts*",
+    "demo*",
+    "physics*",
+    "navigation*"
+]
 
 [tool.setuptools.package-data]
-"cloud" = ["static/*"]
+"nexusos" = ["proto/*.proto"]
+"cloud"   = ["static/*"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths    = ["tests"]
+python_files = ["test_*.py"]
+
+[tool.black]
+line-length = 100
+target-version = ["py310", "py311"]
+
+[tool.ruff]
+line-length = 100
+select = ["E", "F", "W", "I"]
+ignore = ["E501"]

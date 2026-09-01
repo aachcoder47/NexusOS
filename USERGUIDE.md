@@ -1,8 +1,7 @@
-﻿# NexusOS — User Guide
+# NexusOS — User & Developer Guide
 
-> **NexusOS** is a hardware-agnostic, real-time robotics fleet orchestration platform.
-> Connect any robot — differential drive, robotic arm, drone, or custom hardware —
-> to a unified cloud backend with live telemetry, teleoperation, and fleet management.
+> **NexusOS (`nexusos-robotics`)** is a hardware-agnostic, real-time robotics operating system, agent context middleware, and cloud fleet orchestration platform.
+> Connect any robot — differential drive AGV, robotic arm, quadruped, drone, or custom hardware — to an integrated physics simulation, autonomous navigation stack, spatial memory engine, and 3D digital twin cloud dashboard.
 
 ---
 
@@ -10,615 +9,298 @@
 
 1. [Architecture Overview](#1-architecture-overview)
 2. [Installation](#2-installation)
-3. [Running the Simulation Stack](#3-running-the-simulation-stack)
-4. [Fleet Dashboard](#4-fleet-dashboard)
-5. [REST API Reference](#5-rest-api-reference)
-6. [WebSocket Endpoints](#6-websocket-endpoints)
-7. [EdgeAgent Configuration](#7-edgeagent-configuration)
-8. [Writing a Custom HAL Plugin](#8-writing-a-custom-hal-plugin)
-9. [Built-in HAL Plugins](#9-built-in-hal-plugins)
-10. [ROS 2 Bridge Integration](#10-ros-2-bridge-integration)
-11. [Licensing](#11-licensing)
-12. [Troubleshooting](#12-troubleshooting)
+3. [Running the 3D Digital Twin Simulation](#3-running-the-3d-digital-twin-simulation)
+4. [3D Digital Twin Dashboard](#4-3d-digital-twin-dashboard)
+5. [Autonomous Navigation Stack](#5-autonomous-navigation-stack)
+6. [Real-World Physics Engine](#6-real-world-physics-engine)
+7. [Agent Context & Spatial Memory](#7-agent-context--spatial-memory)
+8. [Writing a Custom Robot Driver](#8-writing-a-custom-robot-driver)
+9. [Edge Daemon & Safety Control Loop](#9-edge-daemon--safety-control-loop)
+10. [REST & WebSocket API Reference](#10-rest--websocket-api-reference)
+11. [Licensing & Grace Mode Engine](#11-licensing--grace-mode-engine)
+12. [Docker Deployment](#12-docker-deployment)
+13. [Troubleshooting & FAQs](#13-troubleshooting--faqs)
 
 ---
 
 ## 1. Architecture Overview
 
 ```
-+--------------------------------------------------------+
-|                    NEXUSOS PLATFORM                    |
-|                                                        |
-|  +---------------+   WebSocket    +----------------+  |
-|  | Cloud Fleet   |<---------------| Edge Agent     |  |
-|  | Server        | Telemetry(50Hz)| Daemon         |  |
-|  | (FastAPI)     |--------------->| (per robot)    |  |
-|  | port :8000    |  Commands(JSON)|                |  |
-|  +------+--------+                +-------+--------+  |
-|         | WebSocket /ws/dashboard          |           |
-|         v                         +--------v-------+  |
-|  +---------------+                | AbstractHAL    |  |
-|  | Fleet UI      |                | Plugin (ABC)   |  |
-|  | Dashboard     |                +--------+-------+  |
-|  | (Browser)     |                         |           |
-|  +---------------+          DiffDrive   RoboticArm    |
-|                              Plugin      Plugin       |
-+--------------------------------------------------------+
+┌────────────────────────────────────────────────────────────────────────────────────────┐
+│                                 3D DIGITAL TWIN WEB UI                                 │
+│          (Interactive Click-to-Navigate • 360° LiDAR Cloud • Physics Telemetry)        │
+└───────────────────────────────────────────▲────────────────────────────────────────────┘
+                                            │ WebSockets (30 Hz Streaming)
+┌───────────────────────────────────────────▼────────────────────────────────────────────┐
+│                             CLOUD FLEET CONTROL SERVER                                 │
+│        (FastAPI Hub • Multi-Tenant State • Command Dispatch • License Verification)    │
+└───────────────────────────────────────────▲────────────────────────────────────────────┘
+                                            │ Resilient WebSocket / gRPC (Auto-Reconnect)
+┌───────────────────────────────────────────▼────────────────────────────────────────────┐
+│                              ASYNCHRONOUS EDGE DAEMON                                  │
+│         (50Hz Safety Loop • Offline Buffer • Mission Watchdog • Grace Mode)            │
+├────────────────────────────────────────────────────────────────────────────────────────┤
+│                                AGENT CONTEXT MEMORY                                    │
+│       (Temporal State Chunking • Spatial Entity Dedup • Cosine Vector Retrieval)       │
+├────────────────────────────────────────────────────────────────────────────────────────┤
+│                            AUTONOMOUS NAVIGATION STACK                                 │
+│       (Costmap2D • Global: A*/Theta*/RRT*/D* Lite • Local: DWA / Pure Pursuit)         │
+├────────────────────────────────────────────────────────────────────────────────────────┤
+│                           REAL-WORLD 3D PHYSICS ENGINE                                 │
+│       (Pacejka Tires • DC Motors • Suspension • Aero Drag • Battery Electrochemistry)  │
+├────────────────────────────────────────────────────────────────────────────────────────┤
+│                          HARDWARE ABSTRACTION LAYER (HAL)                              │
+│       (Differential Drive AGVs • 6-DOF Arms • Quadrupeds • Custom Hardware Drivers)    │
+└───────────────────────────────────────────▲────────────────────────────────────────────┘
+                                            │
+                                 Physical Hardware / Actuators
 ```
-
-**Components at a glance:**
-
-| Component | Role |
-|-----------|------|
-| **Cloud Fleet Server** | FastAPI backend — aggregates telemetry, dispatches commands, serves dashboard |
-| **Edge Agent Daemon** | Runs on robot compute; reads HAL, streams telemetry, receives commands |
-| **HAL Plugin** | Hardware-specific adapter implementing `AbstractHardwarePlugin` |
-| **Fleet Dashboard** | Browser UI — live gauges, 2D map, teleoperation controls |
-| **Protobuf Schema** | Shared message contracts (`proto/nexus.proto`) |
-
-**Data flow:**
-1. HAL Plugin reads raw hardware sensors → normalized `RobotTelemetryData`
-2. Edge Agent serializes to **msgpack** binary (~6x faster than JSON) and streams to Cloud via WebSocket at up to 50 Hz
-3. Cloud Server updates `FleetStateManager` and broadcasts to all Dashboard clients
-4. Dashboard sends teleoperation commands → Cloud dispatches to correct Edge Agent
-5. Edge Agent calls `hal.send_command()` on physical hardware
 
 ---
 
 ## 2. Installation
 
 ### Requirements
-
 - Python **3.10+**
-- Docker + Docker Compose (for containerized mode)
-- ROS 2 Humble/Iron/Jazzy _(optional — only for ROS 2 bridge)_
+- Modern Web Browser with WebGL (for 3D Digital Twin)
+- Docker & Docker Compose (optional for containerized deployments)
 
-### Option A — Install from PyPI _(Recommended)_
-
+### Option A — Install from PyPI (Recommended)
 ```bash
-pip install nexusos-fleet
+pip install nexusos-robotics
 ```
-
-> Full package: **[pypi.org/project/nexusos-fleet](https://pypi.org/project/nexusos-fleet/)**
 
 ### Option B — Install from Source
-
 ```bash
-git clone https://github.com/aachcoder47/NexusOS.git
+git clone https://github.com/nexusos-robotics/NexusOS.git
 cd NexusOS
-pip install -e .
-```
-
-### Verify Installation
-
-```bash
-python -c "from hal.base import AbstractHardwarePlugin; print('HAL OK')"
-python -c "from edge.agent import EdgeAgent; print('Edge OK')"
+pip install -e ".[dev]"
 ```
 
 ---
 
-## 3. Running the Simulation Stack
+## 3. Running the 3D Digital Twin Simulation
 
-### Option A — Local Python _(No Docker required)_
-
-Starts Cloud Server + two simulated Edge Agents (diff-drive + robotic arm):
+Launch the complete local stack (Cloud Server, Physics-Backed Rover, LiDAR, and Web UI):
 
 ```bash
 python scripts/run_sim.py
 ```
-
-Expected output:
-```
-[NexusOS.CloudServer]  Uvicorn running on http://0.0.0.0:8000
-[NexusOS.EdgeAgent]    Connected! robot_id=rover-alpha
-[NexusOS.EdgeAgent]    Connected! robot_id=arm-beta
-```
-
-Open **http://localhost:8000** in your browser.
-
----
-
-### Option B — Docker Compose _(Containerized)_
-
+Or start via the console script:
 ```bash
-docker-compose up --build
+nexusos-sim
 ```
 
-| Container | Service | Port |
-|-----------|---------|------|
-| `nexus-cloud-server` | Cloud Fleet Backend | `:8000` |
-| `nexus-edge-rover-alpha` | Diff-Drive simulator | — |
-| `nexus-edge-arm-beta` | Robotic Arm simulator | — |
+Open your browser at: **`http://localhost:8000`**
 
 ---
 
-### Option C — Start Components Individually
+## 4. 3D Digital Twin Dashboard
 
-**Terminal 1 — Cloud Server:**
-```bash
-uvicorn cloud.main:app --host 0.0.0.0 --port 8000 --reload
-```
+The built-in web dashboard provides real-time visualization and control:
 
-**Terminal 2 — Edge Agent(s):**
-```bash
-# python edge/agent.py <robot_id> <robot_type>
-python edge/agent.py rover-alpha DIFFERENTIAL_DRIVE
-python edge/agent.py arm-beta ROBOTIC_ARM
-```
-
----
-
-## 4. Fleet Dashboard
-
-Navigate to **`http://localhost:8000`**.
-
-### Panels
-
-| Panel | Description |
-|-------|-------------|
-| **Robot Cards** | Live status — mode, battery %, connection state |
-| **Telemetry Gauges** | Real-time velocity, angular rate, battery voltage |
-| **2D Map View** | Live robot X/Y position plotted on a 2D plane |
-| **Teleop Controls** | Arrow key / button teleoperation |
-| **Global E-Stop** | One-click emergency stop across entire fleet |
-
-### Keyboard Teleoperation
-
-Select a robot card, then:
-
-| Key | Action |
-|-----|--------|
-| `W` / `↑` | Forward |
-| `S` / `↓` | Backward |
-| `A` / `←` | Turn Left |
-| `D` / `→` | Turn Right |
-| `Space` | Stop |
-
-> **Note:** Teleop only works in `MANUAL` mode. In `AUTONOMOUS` mode the onboard watchdog governs the robot.
+- **Interactive Click-to-Navigate**: Click anywhere on the 3D grid floor to set a destination waypoint.
+- **3D Waypoint Beacons & Splines**: Live path display generated by the global planner.
+- **LiDAR Point Cloud**: Dynamic point cloud visualization rendered in real time.
+- **Real-World Physics Diagnostics HUD**:
+  - Left & right DC motor output torque ($\text{N}\cdot\text{m}$) and current draw ($\text{A}$)
+  - Pacejka longitudinal slip ratio ($\kappa$) and lateral slip angle ($\alpha$)
+  - Suspension compression per wheel ($\text{mm}$)
+  - Aerodynamic drag force ($\text{N}$) and battery SoC ($\%$) / temperature
+- **Tire Surface Switcher**: Instantly switch surface dynamics (Dry/Wet Concrete, Asphalt, Gravel, Dirt, Grass, Sand, Tile, Ice).
+- **Manual Teleoperation & Speed Slider**: On-screen D-pad and linear velocity scaler.
+- **Global Emergency Stop (`E_STOP`)**: Cuts motor actuation and latches safety braking.
 
 ---
 
-## 5. REST API Reference
+## 5. Autonomous Navigation Stack
 
-Base URL: `http://localhost:8000`
+NexusOS includes an integrated, zero-dependency autonomous navigation stack:
 
-### Health Check
+### Multi-Layer Costmap (`Costmap2D`)
+- Grid-based representation with configurable resolution (default `0.1m/cell`).
+- Dynamic obstacle marking from LiDAR point clouds.
+- Inflation radius with exponential decay to maintain safe robot clearance.
 
-```http
-GET /api/v1/health
-```
-```json
-{ "status": "HEALTHY", "service": "NexusOS Cloud Fleet Server", "version": "1.0.0" }
-```
+### Global Path Planners (`navigation/planners/`)
+- **$A^*$**: Optimal grid-based shortest path planner with Euclidean heuristics.
+- **$\Theta^*$**: Any-angle path planner providing smooth, non-grid-constrained trajectories.
+- **$\text{RRT}^*$**: Rapidly-exploring Random Tree for high-dimensional obstacle environments.
+- **$D^*\text{-Lite}$**: Incremental replanning for dynamic, partially known environments.
 
----
-
-### List All Robots
-
-```http
-GET /api/v1/robots
-```
-```json
-{
-  "total_robots": 2,
-  "robots": {
-    "rover-alpha": {
-      "robot_id": "rover-alpha",
-      "robot_type": "DIFFERENTIAL_DRIVE",
-      "mode": "MANUAL",
-      "battery_percentage": 87.3,
-      "pose": { "x": 1.24, "y": -0.33, "yaw": 0.52 }
-    }
-  }
-}
-```
+### Local Reactive Planners (`navigation/local_planners/`)
+- **Dynamic Window Approach (DWA)**: Evaluates velocity search space $(v, \omega)$ balancing obstacle clearance, heading alignment, and velocity.
+- **Pure Pursuit**: Geometric path-tracking controller for smooth curve navigation.
 
 ---
 
-### Get Robot Telemetry
+## 6. Real-World Physics Engine
 
-```http
-GET /api/v1/robots/{robot_id}
-```
-```bash
-curl http://localhost:8000/api/v1/robots/rover-alpha
-```
+NexusOS incorporates Newtonian 3D mechanics directly into the Hardware Abstraction Layer:
 
----
+### DC Motor Dynamics (`physics/vehicle.py`)
+- Armature resistance ($R_a$), back-EMF constant ($K_e$), and torque constant ($K_t$).
+- Output torque characteristic: $T = T_{\text{stall}} - \frac{T_{\text{stall}}}{\omega_{\text{no-load}}} \cdot \omega$.
 
-### Send Command to Robot
+### Pacejka Magic Formula Tire Model (`physics/materials.py`)
+- $F_x = D \sin(C \arctan(B\kappa - E(B\kappa - \arctan(B\kappa)))) \cdot F_n$
+- Models realistic wheel spin, slip ratio, and cornering traction across 10 surface materials.
 
-```http
-POST /api/v1/robots/{robot_id}/command
-Content-Type: application/json
-```
+### Suspension Spring-Damper
+- $F_{\text{susp}} = k \cdot x + c \cdot \dot{x}$ per wheel providing dynamic normal forces over terrain.
 
-**Velocity command (mobile base):**
-```json
-{
-  "requested_mode": "MANUAL",
-  "twist": {
-    "linear":  { "x": 0.5, "y": 0.0, "z": 0.0 },
-    "angular": { "x": 0.0, "y": 0.0, "z": 0.3 }
-  }
-}
-```
-
-**Joint position command (robotic arm):**
-```json
-{
-  "requested_mode": "MANUAL",
-  "joints": {
-    "names":     ["joint_1", "joint_2", "joint_3"],
-    "positions": [0.785, 1.047, -0.524]
-  }
-}
-```
-
-**Switch mode:**
-```json
-{ "requested_mode": "AUTONOMOUS" }
-```
-
-**Single-robot E-Stop:**
-```json
-{ "requested_mode": "EMERGENCY_STOP" }
-```
-
-**Response:**
-```json
-{ "status": "DISPATCHED", "robot_id": "rover-alpha", "command": { ... } }
-```
+### Aerodynamics & Battery Electrochemistry
+- Quadratic drag: $F_d = \frac{1}{2}\rho C_d A v^2$.
+- LiFePO4 open-circuit voltage curves, internal resistance drop ($V = \text{OCV} - I R_i$), and Peukert's capacity drain.
 
 ---
 
-### Global Fleet E-Stop
+## 7. Agent Context & Spatial Memory
 
-```http
-POST /api/v1/fleet/estop
-```
-```bash
-curl -X POST http://localhost:8000/api/v1/fleet/estop
-```
-```json
-{ "status": "GLOBAL_EMERGENCY_STOP_EXECUTED", "robots_notified_count": 3 }
-```
-
----
-
-## 6. WebSocket Endpoints
-
-### Edge Agent Stream
-
-```
-ws://localhost:8000/ws/telemetry/{robot_id}
-```
-
-- **Inbound (from Edge Agent):** Binary msgpack frames _or_ JSON telemetry
-- **Outbound (to Edge Agent):** JSON `MotorCommandData` when a command is dispatched
-
----
-
-### Dashboard Live Feed
-
-```
-ws://localhost:8000/ws/dashboard
-```
-
-**Server → Browser (fleet broadcast):**
-```json
-{
-  "event": "FLEET_UPDATE",
-  "fleet": {
-    "rover-alpha": { "pose": { "x": 1.2, "y": 0.3 }, "mode": "MANUAL" }
-  }
-}
-```
-
-**Browser → Server (send command):**
-```json
-{
-  "action": "COMMAND",
-  "robot_id": "rover-alpha",
-  "command": { "twist": { "linear": { "x": 0.3 } } }
-}
-```
-
-**Browser → Server (fleet E-Stop):**
-```json
-{ "action": "GLOBAL_ESTOP" }
-```
-
----
-
-## 7. EdgeAgent Configuration
+The `AgentContextEngine` (`nexusos/memory/engine.py`) provides semantic memory for AI agents:
 
 ```python
-from edge.config import EdgeConfig
-from edge.agent import EdgeAgent
-from hal.base import RobotType
+from nexusos.memory.engine import AgentContextEngine
+from nexusos.core.types import Vector3D
+
+engine = AgentContextEngine(robot_id="robot_01")
+
+# Ingest detected objects with automatic spatial deduplication (0.35m threshold)
+entity = engine.ingest_spatial_entity(
+    label="charging_dock",
+    position=Vector3D(x=4.0, y=-2.0, z=0.0)
+)
+
+# Assert temporal facts with automatic expiration
+engine.assert_fact("zone_b", "is_accessible", "TRUE", validity_sec=600.0)
+
+# Snapshot context block with embedding vector
+block = engine.create_context_block(embedding=[0.1, 0.4, -0.2, 0.9])
+
+# Query nearest spatial landmarks
+nearby = engine.query_spatial_entities(center=Vector3D(x=3.8, y=-1.9, z=0.0), radius_m=1.0)
+```
+
+---
+
+## 8. Writing a Custom Robot Driver
+
+Subclass `BaseRobotDriver` to integrate any physical hardware:
+
+```python
 import asyncio
+from nexusos.core.hal import BaseRobotDriver
+from nexusos.core.types import RobotType, TelemetryFrame, CommandFrame, Pose3D, Vector3D
+from nexusos.core.registry import DriverRegistry
+from nexusos.agent.daemon import EdgeDaemon
 
-config = EdgeConfig(
-    robot_id             = "my-robot-01",
-    robot_type           = RobotType.DIFFERENTIAL_DRIVE,
-    server_url           = "ws://192.168.1.100:8000/ws/telemetry",
-    telemetry_rate_hz    = 20.0,
-    watchdog_timeout_sec = 2.0,
-    reconnect_interval_sec = 3.0,
-    use_protobuf         = True,
-)
-
-agent = EdgeAgent(config, hal_plugin=MyPlugin(config.robot_id))
-asyncio.run(agent.start())
-```
-
-### Parameters
-
-| Parameter | Default | Description |
-|-----------|---------|-------------|
-| `robot_id` | `"robot-01"` | Unique identifier for this robot |
-| `robot_type` | `DIFFERENTIAL_DRIVE` | Robot category (see table below) |
-| `server_url` | `ws://localhost:8000/ws/telemetry` | Cloud WebSocket URL |
-| `telemetry_rate_hz` | `20.0` | Telemetry publish frequency (1–50 Hz) |
-| `watchdog_timeout_sec` | `2.0` | E-Stop if no command received in AUTONOMOUS mode |
-| `reconnect_interval_sec` | `3.0` | Seconds between reconnect attempts on disconnect |
-| `use_protobuf` | `True` | Binary msgpack vs plain JSON frames |
-
-### Robot Types
-
-| `RobotType` | Description |
-|-------------|-------------|
-| `DIFFERENTIAL_DRIVE` | 2-wheel mobile base |
-| `ROBOTIC_ARM` | Serial manipulator |
-| `DRONE` | Multirotor UAV |
-| `LEGGED` | Quadruped / biped |
-| `TRACKED` | Tank-drive tracked platform |
-| `GENERIC` | Any custom hardware |
-
----
-
-## 8. Writing a Custom HAL Plugin
-
-Subclass `AbstractHardwarePlugin` and implement all 5 abstract methods:
-
-```python
-from hal.base import (
-    AbstractHardwarePlugin, RobotTelemetryData, MotorCommandData,
-    RobotType, RobotMode, PoseData, TwistData, BatteryData,
-    JointStateData, Vector3D
-)
-import time
-
-class MyRobotPlugin(AbstractHardwarePlugin):
-
+class MyRobotDriver(BaseRobotDriver):
     def __init__(self, robot_id: str):
-        super().__init__(robot_id=robot_id)
-        # Open your hardware driver here (serial, CAN, SDK, etc.)
+        super().__init__(robot_id=robot_id, robot_type=RobotType.DIFFERENTIAL_DRIVE)
 
     async def initialize(self) -> bool:
-        """Open hardware connection. Return True on success."""
-        self.current_mode = RobotMode.MANUAL
+        # Hardware setup (Serial/CAN/Micro-ROS)
         self.is_initialized = True
         return True
 
-    async def read_telemetry(self) -> RobotTelemetryData:
-        """Read sensors and return normalized telemetry."""
-        return RobotTelemetryData(
-            robot_id      = self.robot_id,
-            robot_type    = RobotType.GENERIC,
-            timestamp_sec = time.time(),
-            pose    = PoseData(
-                position        = Vector3D(x=0.0, y=0.0, z=0.0),
-                orientation_rpy = Vector3D(x=0.0, y=0.0, z=0.0),
-            ),
-            twist   = TwistData(
-                linear  = Vector3D(x=0.0, y=0.0, z=0.0),
-                angular = Vector3D(x=0.0, y=0.0, z=0.0),
-            ),
-            battery = BatteryData(voltage=12.0, percentage=100.0, is_charging=False),
-            mode    = self.current_mode,
-            joints  = JointStateData(names=[], positions=[], velocities=[], effort=[]),
-            custom_metrics = {"my_sensor": 42.0},
-            status_message = "OK",
+    async def read_telemetry(self) -> TelemetryFrame:
+        return TelemetryFrame(
+            robot_id=self.robot_id,
+            robot_type=self.robot_type,
+            pose=Pose3D(position=Vector3D(x=0.0, y=0.0, z=0.0))
         )
 
-    async def send_command(self, command: MotorCommandData) -> bool:
-        """Apply command to hardware. Return True if accepted."""
-        if command.requested_mode:
-            self.current_mode = command.requested_mode
+    async def send_command(self, command: CommandFrame) -> bool:
         if command.target_twist:
-            vx = command.target_twist.linear.x
-            wz = command.target_twist.angular.z
-            # Write to your driver here
+            # Send PWM/RPM to actuators
+            pass
         return True
 
     async def emergency_stop(self) -> bool:
-        """Cut all motor outputs immediately."""
-        self.current_mode = RobotMode.EMERGENCY_STOP
         return True
 
     async def shutdown(self) -> None:
-        """Close hardware connections cleanly."""
         await self.emergency_stop()
-```
 
-> See **`demo/custom_hardware_plugin.py`** for a complete `QuadcopterDronePlugin` with
-> 3D kinematics, altitude control, and battery simulation.
-
----
-
-## 9. Built-in HAL Plugins
-
-### `DiffDriveBasePlugin`
-
-```python
-from hal.plugins.diff_drive import DiffDriveBasePlugin
-
-plugin = DiffDriveBasePlugin(
-    robot_id     = "rover-alpha",
-    wheel_track  = 0.45,   # metres between drive wheels
-    wheel_radius = 0.08,   # metres
-)
-```
-
-- Unicycle kinematic model using numpy-accelerated trig (~3x faster than `math`)
-- Simulates encoder odometry, battery drain, and sensor noise
-- Supports `MANUAL`, `AUTONOMOUS`, `EMERGENCY_STOP` modes
-
-### `RoboticArmPlugin`
-
-```python
-from hal.plugins.robotic_arm import RoboticArmPlugin
-
-plugin = RoboticArmPlugin(robot_id="arm-beta", num_joints=6)
-```
-
-- Joint position control with velocity-limited interpolation
-- Safety joint-limit enforcement
-- Full joint telemetry (names, positions, velocities, effort)
-
----
-
-## 10. ROS 2 Bridge Integration
-
-Bridge NexusOS telemetry directly to ROS 2 topics for **RViz2** or **rqt**:
-
-```python
-from hal.bridges.ros2_bridge import NexusROS2BridgeNode
-
-bridge = NexusROS2BridgeNode(robot_id="rover-alpha")
-# Publishes:
-#   /rover-alpha/pose         → geometry_msgs/PoseStamped
-#   /rover-alpha/joint_states → sensor_msgs/JointState
-#   /rover-alpha/cmd_vel      → geometry_msgs/Twist
-```
-
-```bash
-# In a ROS 2-sourced terminal
-source /opt/ros/humble/setup.bash
-ros2 topic echo /rover-alpha/pose
-```
-
-> Requires ROS 2 installed. Gracefully raises `RuntimeError` if `rclpy` is not found.
-
----
-
-## 11. Licensing
-
-**Dual-license model (NCL v1.0):**
-
-| Tier | Eligibility | Cost |
-|------|-------------|------|
-| **Community** | Non-commercial, personal, academic, AGPL-compliant OSS | Free |
-| **Commercial** | Any entity with >$100K USD gross annual revenue | Paid |
-
-### Evaluation Sandbox Mode
-
-When a commercial key is missing or expired:
-- ✅ Hardware control, E-Stop, and motor drivers stay **fully operational**
-- ⚠️ Compliance notices are logged
-- ❌ Some fleet management features are restricted
-
-### License API
-
-```bash
-# Verify JWT license token
-curl -X POST http://localhost:8000/api/v1/license/verify \
-  -H "Content-Type: application/json" \
-  -d '{"token": "eyJhbGc..."}'
-
-# Report quarterly usage
-curl -X POST http://localhost:8000/api/v1/license/report_usage \
-  -H "Content-Type: application/json" \
-  -d '{"license_token": "...", "robot_count": 5, "revenue_usd": 250000}'
+DriverRegistry.register("MY_ROBOT", MyRobotDriver)
 ```
 
 ---
 
-## 12. Troubleshooting
+## 9. Edge Daemon & Safety Control Loop
 
-### Edge Agent cannot connect
+The `EdgeDaemon` maintains microsecond-level isolation between the safety-critical HAL polling loop and network streaming:
 
-```
-[WARNING] Connection lost or unreachable. Retrying in 3s...
-```
-- Verify Cloud Server: `curl http://localhost:8000/api/v1/health`
-- Check `server_url` in `EdgeConfig` — use the machine's actual IP, not `localhost`, if agents run on separate hardware
-- Docker: `docker ps` → confirm `nexus-cloud-server` is `Up (healthy)`
-
-### Dashboard shows no robots
-
-- Confirm Edge Agents are running and log "Connected!"
-- Call `GET /api/v1/robots` — if empty, agents have not connected yet
-- Hard-refresh browser (`Ctrl+Shift+R`)
-
-### `initialize()` returns `False`
-
-- Check hardware driver is reachable (USB, serial, CAN)
-- Linux: `sudo chmod 666 /dev/ttyUSB0` or add user to `dialout` group
-- Confirm hardware is powered and not locked by another process
-
-### Watchdog E-Stop fires in Autonomous mode
-
-```
-[ERROR] WATCHDOG TIMEOUT! No command for 2.35s. Triggering E-STOP!
-```
-- Autonomous mode requires commands at ≥ `1 / watchdog_timeout_sec` Hz
-- Increase `watchdog_timeout_sec` in `EdgeConfig`, or ensure your autonomous controller sends regular heartbeats
-- To recover: `curl -X POST http://localhost:8000/api/v1/robots/my-robot/command -d '{"requested_mode":"MANUAL"}'`
-
-### Port 8000 already in use
-
-```bash
-# Windows
-netstat -ano | findstr :8000
-# macOS/Linux
-lsof -i :8000
-# Change port in docker-compose.yml → ports: - "8001:8000"
-```
-
-### Recompile Protobuf stubs
-
-```bash
-python scripts/compile_proto.py
-# Output: proto/gen/*.py
-```
+- **HAL Control Loop (50 Hz)**: Always executes on schedule; completely decoupled from network latency.
+- **WebSocket Streaming (10 Hz)**: Streams telemetry to the cloud with exponential backoff auto-reconnect.
+- **Offline Telemetry Buffer**: Stores up to 500 telemetry frames during WAN disconnects and drains them on reconnection.
+- **Grace Mode Enforcement**: Caps maximum speed if an invalid or expired license token is detected.
 
 ---
 
-## Quick Reference
+## 10. REST & WebSocket API Reference
+
+### REST Endpoints
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/v1/health` | Server health check |
+| `GET` | `/api/v1/fleet` | Summary of all connected robots |
+| `GET` | `/api/v1/fleet/{robot_id}` | Full telemetry state for a robot |
+| `GET` | `/api/v1/fleet/{robot_id}/telemetry/history` | Historical telemetry ring buffer |
+| `POST` | `/api/v1/robots/{robot_id}/navigate` | Send autonomous navigation goal `{x, y, z, yaw}` |
+| `POST` | `/api/v1/robots/{robot_id}/twist` | Send manual velocity vector `{linear_x, angular_z}` |
+| `POST` | `/api/v1/robots/{robot_id}/estop` | Trigger emergency stop on a specific robot |
+| `POST` | `/api/v1/fleet/estop/global` | Global emergency stop across entire fleet |
+| `POST` | `/api/v1/licensing/issue` | Issue signed JWT license token |
+| `POST` | `/api/v1/licensing/verify` | Verify license token status |
+
+### WebSocket Endpoints
+| Endpoint | Protocol | Purpose |
+|----------|----------|---------|
+| `/ws/edge` | Binary/JSON WebSocket | Edge robot agent telemetry uplink & command downlink |
+| `/ws/dashboard` | JSON WebSocket | Real-time fleet state fan-out (30 Hz) for Web UIs |
+
+---
+
+## 11. Licensing & Grace Mode Engine
+
+NexusOS uses the **NexusOS Community & Commercial License (NCL-1.0)**:
+
+- **Free Tier**: Free for non-commercial, academic, open-source, and commercial deployments with under **$100k ARR**.
+- **Commercial Tier**: 3% revenue share for deployments over $100k ARR.
+- **Grace Mode Safety**: Unlicensed or expired robots **never stop or crash**. They enter Grace Mode, capping speed at $0.5\text{ m/s}$ with watermarked telemetry while preserving full emergency stop capabilities.
+
+---
+
+## 12. Docker Deployment
+
+Spin up the entire stack using Docker Compose:
 
 ```bash
-# Install
-pip install nexusos-fleet
-
-# Run everything (local)
-python scripts/run_sim.py
-
-# Run everything (Docker)
 docker-compose up --build
+```
+This deploys:
+1. `nexusos-cloud`: FastAPI server and WebSocket hub on port `8000`
+2. `nexusos-license-server`: License issuance server on port `9000`
+3. `nexusos-edge-01`: Simulated Differential Drive robot
+4. `nexusos-edge-02`: Simulated 6-DOF Robotic Arm
 
-# Dashboard
-open http://localhost:8000
+---
 
-# Health
-curl http://localhost:8000/api/v1/health
+## 13. Troubleshooting & FAQs
 
-# List robots
-curl http://localhost:8000/api/v1/robots
+### Q: Port 8000 is already in use (`OSError: [Errno 10048]`)
+**A:** Another instance of NexusOS or a web server is running. Free port 8000:
+```powershell
+Stop-Process -Id (Get-NetTCPConnection -LocalPort 8000).OwningProcess -Force
+```
 
-# Drive rover-alpha forward at 0.5 m/s
-curl -X POST http://localhost:8000/api/v1/robots/rover-alpha/command \
-  -H "Content-Type: application/json" \
-  -d '{"twist":{"linear":{"x":0.5},"angular":{"z":0.0}}}'
-
-# Fleet E-Stop
-curl -X POST http://localhost:8000/api/v1/fleet/estop
+### Q: How do I verify all unit tests?
+**A:** Run pytest from the root directory:
+```bash
+python -m pytest tests/ -v
 ```
 
 ---
 
-*NexusOS — Hardware-agnostic robotics fleet orchestration.*
-*[GitHub](https://github.com/aachcoder47/NexusOS) · [PyPI](https://pypi.org/project/nexusos-fleet/)*
+*NexusOS — The Universal Robotics Operating System. Built with Python 3.10+, FastAPI, and Three.js.*

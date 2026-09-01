@@ -1,3 +1,5 @@
 [console_scripts]
-nexusos-gui = scripts.desktop_gui:main
+nexusos-edge = nexusos.agent.run_edge:main
+nexusos-license = nexusos.licensing.server:main
+nexusos-server = nexusos.server.main:main
 nexusos-sim = scripts.run_sim:main

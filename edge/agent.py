@@ -174,14 +174,22 @@ class EdgeAgent:
                 logger.error(f"Error parsing inbound command: {e}")
 
     async def _watchdog_loop(self) -> None:
-        """Watchdog monitor: triggers E-stop if autonomous command stream drops."""
+        """Watchdog monitor: triggers E-stop if autonomous command stream drops and no mission active."""
         while self._running:
             await asyncio.sleep(0.5)
             if self.hal.current_mode == RobotMode.AUTONOMOUS:
-                elapsed = time.time() - self._last_command_time
-                if elapsed > self.config.watchdog_timeout_sec:
-                    logger.error(f"WATCHDOG TIMEOUT! No command received for {elapsed:.2f}s. Triggering E-STOP!")
-                    await self.hal.emergency_stop()
+                # Check if HAL has active navigation mission running
+                has_active_nav = False
+                if hasattr(self.hal, "navigator"):
+                    nav_state = getattr(self.hal.navigator, "state", None)
+                    if nav_state in ("NAVIGATING", "PLANNING", "OBSTACLE_AVOIDANCE", "RECOVERY_ROTATE", "RECOVERY_BACKUP"):
+                        has_active_nav = True
+
+                if not has_active_nav:
+                    elapsed = time.time() - self._last_command_time
+                    if elapsed > self.config.watchdog_timeout_sec:
+                        logger.error(f"WATCHDOG TIMEOUT! No command received for {elapsed:.2f}s. Triggering E-STOP!")
+                        await self.hal.emergency_stop()
 
     def _parse_command_data(self, data: dict) -> Optional[MotorCommandData]:
         try:
@@ -211,11 +219,24 @@ class EdgeAgent:
                 except ValueError:
                     pass
 
+            params = data.get("parameters", {}) or {}
+            # Allow top-level nav_goal / navigate_to / cancel_nav
+            if "nav_goal" in data:
+                params["nav_goal"] = data["nav_goal"]
+                if req_mode is None:
+                    req_mode = RobotMode.AUTONOMOUS
+            elif "navigate_to" in data:
+                params["nav_goal"] = data["navigate_to"]
+                if req_mode is None:
+                    req_mode = RobotMode.AUTONOMOUS
+            if "cancel_nav" in data:
+                params["cancel_nav"] = data["cancel_nav"]
+
             return MotorCommandData(
                 target_twist=target_twist,
                 target_joints=target_joints,
                 requested_mode=req_mode,
-                parameters=data.get("parameters", {})
+                parameters=params
             )
         except Exception as e:
             logger.error(f"Failed to parse motor command: {e}")

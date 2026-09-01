@@ -1,0 +1,187 @@
+syntax = "proto3";
+
+package nexusos.v1;
+
+enum RobotType {
+  ROBOT_TYPE_UNSPECIFIED = 0;
+  ROBOT_TYPE_DIFFERENTIAL_DRIVE = 1;
+  ROBOT_TYPE_ROBOTIC_ARM = 2;
+  ROBOT_TYPE_QUADRUPED = 3;
+  ROBOT_TYPE_DRONE = 4;
+  ROBOT_TYPE_HUMANOID = 5;
+}
+
+enum RobotMode {
+  ROBOT_MODE_UNINITIALIZED = 0;
+  ROBOT_MODE_MANUAL = 1;
+  ROBOT_MODE_AUTONOMOUS = 2;
+  ROBOT_MODE_EMERGENCY_STOP = 3;
+  ROBOT_MODE_GRACE_FALLBACK = 4;
+  ROBOT_MODE_FAULT = 5;
+}
+
+enum LicenseTier {
+  LICENSE_TIER_UNSPECIFIED = 0;
+  LICENSE_TIER_COMMUNITY = 1;
+  LICENSE_TIER_COMMERCIAL = 2;
+  LICENSE_TIER_ENTERPRISE = 3;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Geometry & Math Primitives
+// ─────────────────────────────────────────────────────────────────────────────
+
+message Vector3D {
+  double x = 1;
+  double y = 2;
+  double z = 3;
+}
+
+message Quaternion3D {
+  double x = 1;
+  double y = 2;
+  double z = 3;
+  double w = 4;
+}
+
+message Pose3D {
+  Vector3D position = 1;
+  Quaternion3D orientation = 2;
+}
+
+message Twist3D {
+  Vector3D linear = 1;
+  Vector3D angular = 2;
+}
+
+message BatteryState {
+  float voltage = 1;
+  float percentage = 2;
+  float current_draw_a = 3;
+  float temperature_c = 4;
+  bool is_charging = 5;
+}
+
+message JointState {
+  repeated string names = 1;
+  repeated double positions = 2;
+  repeated double velocities = 3;
+  repeated double effort = 4;
+}
+
+message SensorPayload {
+  string sensor_id = 1;
+  string sensor_type = 2;
+  repeated float ranges = 3;
+  repeated float point_cloud = 4;
+  map<string, double> metadata = 5;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Handshake, Telemetry, and Control Frames
+// ─────────────────────────────────────────────────────────────────────────────
+
+message DeviceHandshake {
+  string robot_id = 1;
+  RobotType robot_type = 2;
+  string hardware_signature = 3;
+  string firmware_version = 4;
+  string license_token = 5;
+  repeated string capabilities = 6;
+  int64 timestamp_utc = 7;
+}
+
+message HandshakeResponse {
+  bool accepted = 1;
+  string session_id = 2;
+  LicenseTier active_tier = 3;
+  bool grace_mode_active = 4;
+  string error_reason = 5;
+  int64 server_time_utc = 6;
+}
+
+message TelemetryFrame {
+  string robot_id = 1;
+  RobotType robot_type = 2;
+  double timestamp_sec = 3;
+  Pose3D pose = 4;
+  Twist3D twist = 5;
+  BatteryState battery = 6;
+  RobotMode mode = 7;
+  JointState joints = 8;
+  repeated SensorPayload sensors = 9;
+  map<string, string> custom_metrics = 10;
+  string status_message = 11;
+  bool is_safety_isolated = 12;
+}
+
+message CommandFrame {
+  string command_id = 1;
+  string robot_id = 2;
+  double timestamp_sec = 3;
+  RobotMode requested_mode = 4;
+  Twist3D target_twist = 5;
+  JointState target_joints = 6;
+  Pose3D target_waypoint = 7;
+  bool emergency_stop = 8;
+  map<string, string> parameters = 9;
+}
+
+message CommandAck {
+  string command_id = 1;
+  string robot_id = 2;
+  bool executed = 3;
+  string message = 4;
+  double execution_latency_ms = 5;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Agent Context & Semantic Spatial Memory
+// ─────────────────────────────────────────────────────────────────────────────
+
+message SpatialEntity {
+  string entity_id = 1;
+  string label = 2;
+  Vector3D position = 3;
+  Vector3D bounding_box = 4;
+  float confidence = 5;
+  int64 first_seen_utc = 6;
+  int64 last_seen_utc = 7;
+  map<string, string> attributes = 8;
+}
+
+message EnvironmentFact {
+  string fact_id = 1;
+  string subject = 2;
+  string predicate = 3;
+  string object = 4;
+  float temporal_validity_sec = 5;
+  double timestamp = 6;
+}
+
+message AgentContextBlock {
+  string context_id = 1;
+  string robot_id = 2;
+  double timestamp_sec = 3;
+  Pose3D current_pose = 4;
+  repeated SpatialEntity detected_entities = 5;
+  repeated EnvironmentFact facts = 6;
+  repeated float embedding_vector = 7;
+  string conversational_state = 8;
+  string active_intent = 9;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// gRPC Streaming & RPC Services
+// ─────────────────────────────────────────────────────────────────────────────
+
+service FleetControlService {
+  rpc RegisterDevice(DeviceHandshake) returns (HandshakeResponse);
+  rpc StreamTelemetry(stream TelemetryFrame) returns (stream CommandFrame);
+  rpc SendCommand(CommandFrame) returns (CommandAck);
+}
+
+service AgentMemoryService {
+  rpc IngestContext(AgentContextBlock) returns (CommandAck);
+  rpc QueryContext(AgentContextBlock) returns (stream AgentContextBlock);
+}

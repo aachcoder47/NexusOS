@@ -129,6 +129,82 @@ async def send_robot_command(robot_id: str, cmd: CommandRequestSchema):
     return {"status": "DISPATCHED", "robot_id": robot_id, "command": command_dict}
 
 
+class NavGoalSchema(BaseModel):
+    x: float
+    y: float
+    yaw: float = 0.0
+
+
+class ObstacleSchema(BaseModel):
+    obstacle_id: str
+    x: float
+    y: float
+    z: float = 0.5
+    width: float = 1.0
+    length: float = 1.0
+    height: float = 1.0
+    is_dynamic: bool = False
+
+
+# In-memory shared physics environment state for fleet
+PHYSICS_OBSTACLES: Dict[str, Dict[str, Any]] = {
+    "crate_1": {"obstacle_id": "crate_1", "x": 2.0, "y": 1.5, "z": 0.5, "width": 1.0, "length": 1.0, "height": 1.0, "is_dynamic": False},
+    "crate_2": {"obstacle_id": "crate_2", "x": -2.5, "y": 3.0, "z": 0.5, "width": 1.2, "length": 0.8, "height": 1.0, "is_dynamic": False},
+    "pillar_1": {"obstacle_id": "pillar_1", "x": 0.0, "y": 4.0, "z": 1.0, "width": 0.6, "length": 0.6, "height": 2.0, "is_dynamic": False},
+}
+
+
+@app.post("/api/v1/robots/{robot_id}/navigate")
+async def send_robot_nav_goal(robot_id: str, goal: NavGoalSchema):
+    """Dispatch autonomous navigation target waypoint to edge robot."""
+    command_dict = {
+        "mode": "AUTONOMOUS",
+        "parameters": {
+            "nav_goal": {"x": goal.x, "y": goal.y, "yaw": goal.yaw}
+        }
+    }
+    success = await fleet_state.dispatch_command(robot_id, command_dict)
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Could not send navigation goal to robot '{robot_id}'. Is it connected?"
+        )
+    return {"status": "NAVIGATION_DISPATCHED", "robot_id": robot_id, "goal": goal.model_dump()}
+
+
+@app.post("/api/v1/robots/{robot_id}/cancel_nav")
+async def cancel_robot_navigation(robot_id: str):
+    """Cancel active navigation mission on edge robot."""
+    command_dict = {
+        "parameters": {
+            "cancel_nav": True
+        }
+    }
+    success = await fleet_state.dispatch_command(robot_id, command_dict)
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Could not cancel navigation for robot '{robot_id}'."
+        )
+    return {"status": "NAVIGATION_CANCELLED", "robot_id": robot_id}
+
+
+@app.get("/api/v1/physics/world")
+async def get_physics_world():
+    """Retrieve current physical world obstacles and gravity configuration."""
+    return {
+        "gravity": {"x": 0.0, "y": 0.0, "z": -9.81},
+        "obstacles": list(PHYSICS_OBSTACLES.values())
+    }
+
+
+@app.post("/api/v1/physics/obstacle")
+async def add_physics_obstacle(obs: ObstacleSchema):
+    """Add a new physical obstacle to the shared simulation environment."""
+    PHYSICS_OBSTACLES[obs.obstacle_id] = obs.model_dump()
+    return {"status": "OBSTACLE_ADDED", "obstacle": obs.model_dump()}
+
+
 @app.post("/api/v1/fleet/estop")
 async def emergency_stop_fleet():
     """Trigger Global Emergency Stop across all connected robots in fleet."""

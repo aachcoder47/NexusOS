@@ -1,49 +1,123 @@
-version: '3.8'
+version: "3.9"
+
+# =============================================================================
+# NexusOS Production Docker Compose
+# Spin up the entire NexusOS stack with: docker-compose up --build
+# =============================================================================
 
 services:
-  nexus-cloud:
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # Cloud Fleet Control Server (FastAPI + WebSocket Hub)
+  # ─────────────────────────────────────────────────────────────────────────
+  nexusos-cloud:
     build:
       context: .
-      dockerfile: docker/Dockerfile.cloud
-    container_name: nexus-cloud-server
+      dockerfile: docker/Dockerfile
+      target: cloud
+    image: nexusos-cloud:1.0.0
+    container_name: nexusos-cloud
     ports:
       - "8000:8000"
+    environment:
+      - NEXUSOS_LICENSE_SECRET=${NEXUSOS_LICENSE_SECRET:-nexusos-default-community-secret-v1}
+      - NEXUSOS_LOG_LEVEL=INFO
+    volumes:
+      - nexusos-logs:/nexusos/logs
     networks:
-      - nexus-net
+      - nexusos-net
+    restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
-      interval: 5s
-      timeout: 3s
-      retries: 3
+      test: ["CMD", "python", "-c",
+             "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/health')"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
 
-  edge-rover-alpha:
+  # ─────────────────────────────────────────────────────────────────────────
+  # License Server (JWT Issuance & Verification Mock)
+  # ─────────────────────────────────────────────────────────────────────────
+  nexusos-license-server:
     build:
       context: .
-      dockerfile: docker/Dockerfile.edge
-    container_name: nexus-edge-rover-alpha
-    command: ["python", "edge/agent.py", "rover-alpha", "DIFFERENTIAL_DRIVE"]
+      dockerfile: docker/Dockerfile
+      target: license-server
+    image: nexusos-license-server:1.0.0
+    container_name: nexusos-license-server
+    ports:
+      - "9000:9000"
     environment:
-      - SERVER_URL=ws://nexus-cloud:8000/ws/telemetry
-    depends_on:
-      - nexus-cloud
+      - NEXUSOS_LICENSE_SECRET=${NEXUSOS_LICENSE_SECRET:-nexusos-default-community-secret-v1}
     networks:
-      - nexus-net
+      - nexusos-net
     restart: unless-stopped
+    depends_on:
+      - nexusos-cloud
 
-  edge-arm-beta:
+  # ─────────────────────────────────────────────────────────────────────────
+  # Simulated Edge Robot Node 1 (Differential Drive)
+  # ─────────────────────────────────────────────────────────────────────────
+  nexusos-edge-01:
     build:
       context: .
-      dockerfile: docker/Dockerfile.edge
-    container_name: nexus-edge-arm-beta
-    command: ["python", "edge/agent.py", "arm-beta", "ROBOTIC_ARM"]
+      dockerfile: docker/Dockerfile
+      target: edge
+    image: nexusos-edge:1.0.0
+    container_name: nexusos-edge-01
     environment:
-      - SERVER_URL=ws://nexus-cloud:8000/ws/telemetry
-    depends_on:
-      - nexus-cloud
+      - NEXUSOS_ROBOT_ID=sim_robot_01
+      - NEXUSOS_CLOUD_URL=ws://nexusos-cloud:8000/ws/edge
+      - NEXUSOS_DRIVER_TYPE=DIFFERENTIAL_DRIVE
+      - NEXUSOS_LICENSE_TOKEN=${NEXUSOS_LICENSE_TOKEN:-}
+      - NEXUSOS_LOG_LEVEL=INFO
     networks:
-      - nexus-net
+      - nexusos-net
     restart: unless-stopped
+    depends_on:
+      nexusos-cloud:
+        condition: service_healthy
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # Simulated Edge Robot Node 2 (6-DOF Robotic Arm)
+  # ─────────────────────────────────────────────────────────────────────────
+  nexusos-edge-02:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      target: edge
+    image: nexusos-edge:1.0.0
+    container_name: nexusos-edge-02
+    environment:
+      - NEXUSOS_ROBOT_ID=sim_arm_01
+      - NEXUSOS_CLOUD_URL=ws://nexusos-cloud:8000/ws/edge
+      - NEXUSOS_DRIVER_TYPE=ROBOTIC_ARM
+      - NEXUSOS_LICENSE_TOKEN=${NEXUSOS_LICENSE_TOKEN:-}
+      - NEXUSOS_LOG_LEVEL=INFO
+    networks:
+      - nexusos-net
+    restart: unless-stopped
+    depends_on:
+      nexusos-cloud:
+        condition: service_healthy
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # Prometheus Metrics Exporter (optional, disabled by default)
+  # ─────────────────────────────────────────────────────────────────────────
+  # prometheus:
+  #   image: prom/prometheus:latest
+  #   ports:
+  #     - "9090:9090"
+  #   volumes:
+  #     - ./docker/prometheus.yml:/etc/prometheus/prometheus.yml
+  #   networks:
+  #     - nexusos-net
 
 networks:
-  nexus-net:
+  nexusos-net:
     driver: bridge
+    name: nexusos-network
+
+volumes:
+  nexusos-logs:
+    name: nexusos-logs
