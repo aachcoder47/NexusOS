@@ -181,7 +181,8 @@ class EdgeAgent:
                 # Check if HAL has active navigation mission running
                 has_active_nav = False
                 if hasattr(self.hal, "navigator"):
-                    nav_state = getattr(self.hal.navigator, "state", None)
+                    nav = getattr(self.hal, "navigator", None)
+                    nav_state = getattr(nav, "state", None) if nav is not None else None
                     if nav_state in ("NAVIGATING", "PLANNING", "OBSTACLE_AVOIDANCE", "RECOVERY_ROTATE", "RECOVERY_BACKUP"):
                         has_active_nav = True
 
@@ -196,20 +197,24 @@ class EdgeAgent:
             target_twist = None
             if "twist" in data or "target_twist" in data:
                 tw = data.get("twist") or data.get("target_twist")
-                lin = tw.get("linear", {})
-                ang = tw.get("angular", {})
-                target_twist = TwistData(
-                    linear=Vector3D(x=float(lin.get("x", 0.0)), y=float(lin.get("y", 0.0)), z=float(lin.get("z", 0.0))),
-                    angular=Vector3D(x=float(ang.get("x", 0.0)), y=float(ang.get("y", 0.0)), z=float(ang.get("z", 0.0)))
-                )
+                if isinstance(tw, dict):
+                    lin = tw.get("linear", {}) if isinstance(tw.get("linear"), dict) else {}
+                    ang = tw.get("angular", {}) if isinstance(tw.get("angular"), dict) else {}
+                    target_twist = TwistData(
+                        linear=Vector3D(x=float(lin.get("x", 0.0)), y=float(lin.get("y", 0.0)), z=float(lin.get("z", 0.0))),
+                        angular=Vector3D(x=float(ang.get("x", 0.0)), y=float(ang.get("y", 0.0)), z=float(ang.get("z", 0.0)))
+                    )
 
             target_joints = None
             if "joints" in data or "target_joints" in data:
                 j = data.get("joints") or data.get("target_joints")
-                target_joints = JointStateData(
-                    names=j.get("names", []),
-                    positions=[float(p) for p in j.get("positions", [])]
-                )
+                if isinstance(j, dict):
+                    raw_names = j.get("names", [])
+                    raw_positions = j.get("positions", [])
+                    target_joints = JointStateData(
+                        names=list(raw_names) if isinstance(raw_names, list) else [],
+                        positions=[float(p) for p in raw_positions] if isinstance(raw_positions, list) else []
+                    )
 
             req_mode = None
             if "mode" in data or "requested_mode" in data:

@@ -3,16 +3,27 @@ NexusOS ROS 2 Desktop Bridge
 Bridges NexusOS HAL telemetry and motor commands directly to ROS 2 topics for native RViz2 and rqt visualization.
 """
 
-from typing import Optional
+from typing import Optional, Any
 from hal.base import RobotTelemetryData, MotorCommandData, TwistData, Vector3D
 
+rclpy: Any = None
+Node: Any = None
+PoseStamped: Any = None
+Twist: Any = None
+JointState: Any = None
+
 try:
-    import rclpy
-    from rclpy.node import Node
-    from geometry_msgs.msg import PoseStamped, Twist
-    from sensor_msgs.msg import JointState
+    import rclpy as _rclpy  # pyright: ignore[reportMissingImports]
+    from rclpy.node import Node as _Node  # pyright: ignore[reportMissingImports]
+    from geometry_msgs.msg import PoseStamped as _PoseStamped, Twist as _Twist  # pyright: ignore[reportMissingImports]
+    from sensor_msgs.msg import JointState as _JointState  # pyright: ignore[reportMissingImports]
+    rclpy = _rclpy
+    Node = _Node
+    PoseStamped = _PoseStamped
+    Twist = _Twist
+    JointState = _JointState
     ROS2_AVAILABLE = True
-except ImportError:
+except (ImportError, ModuleNotFoundError):
     ROS2_AVAILABLE = False
 
 
@@ -24,7 +35,7 @@ class NexusROS2BridgeNode:
     """
 
     def __init__(self, robot_id: str):
-        if not ROS2_AVAILABLE:
+        if not ROS2_AVAILABLE or rclpy is None:
             raise RuntimeError(
                 "rclpy is not installed in the current environment. "
                 "Install ROS 2 (Humble/Iron/Jazzy) to use native RViz2 / rqt desktop visualization."
@@ -40,6 +51,9 @@ class NexusROS2BridgeNode:
 
     def publish_telemetry(self, telemetry: RobotTelemetryData):
         """Publish NexusOS HAL telemetry to ROS 2 topics for RViz2."""
+        if rclpy is None:
+            return
+
         # 1. Publish PoseStamped for RViz2 3D Robot Trajectory
         pose_msg = PoseStamped()
         pose_msg.header.stamp = self.node.get_clock().now().to_msg()
@@ -63,4 +77,5 @@ class NexusROS2BridgeNode:
 
     def shutdown(self):
         self.node.destroy_node()
-        rclpy.shutdown()
+        if rclpy is not None:
+            rclpy.shutdown()

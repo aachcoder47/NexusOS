@@ -89,6 +89,7 @@ include = [
 "cloud"   = ["static/*"]
 
 [tool.pytest.ini_options]
+addopts      = "-p no:napari"
 asyncio_mode = "auto"
 testpaths    = ["tests"]
 python_files = ["test_*.py"]

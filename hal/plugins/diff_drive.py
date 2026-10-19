@@ -201,6 +201,18 @@ class DiffDriveBasePlugin(AbstractHardwarePlugin):
                     f"Output stall torque={self.motor_left.output_stall_torque:.2f} N·m")
         return True
 
+    @property
+    def _x(self) -> float:
+        return self.body.position.x
+
+    @property
+    def _y(self) -> float:
+        return self.body.position.y
+
+    @property
+    def _theta(self) -> float:
+        return self.body.orientation.to_euler()[2]
+
     # ──────────────────────────────────────────────────────────────────────────
     # Navigation Interface
     # ──────────────────────────────────────────────────────────────────────────
@@ -484,11 +496,12 @@ class DiffDriveBasePlugin(AbstractHardwarePlugin):
         # Navigation goal
         if "nav_goal" in params or "goal" in params:
             g = params.get("nav_goal") or params.get("goal")
-            self.set_navigation_goal(
-                float(g.get("x", 0.0)),
-                float(g.get("y", 0.0)),
-                float(g.get("yaw", 0.0))
-            )
+            if isinstance(g, dict):
+                self.set_navigation_goal(
+                    float(g.get("x", 0.0)),
+                    float(g.get("y", 0.0)),
+                    float(g.get("yaw", 0.0))
+                )
         elif params.get("cancel_nav"):
             self.cancel_navigation()
 

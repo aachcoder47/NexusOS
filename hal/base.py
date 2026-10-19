@@ -21,6 +21,7 @@ try:
     import msgpack as _msgpack          # C extension; ~6x faster than json
     _MSGPACK_AVAILABLE = True
 except ImportError:                     # graceful fallback
+    _msgpack = None                     # type: ignore
     import json as _json_fallback
     _MSGPACK_AVAILABLE = False
 
@@ -128,9 +129,9 @@ class RobotTelemetryData:
         ~6x faster than json.dumps + encode.  ~40% smaller wire payload.
         Falls back to UTF-8 JSON bytes if msgpack is not installed.
         """
-        if _MSGPACK_AVAILABLE:
+        if _MSGPACK_AVAILABLE and _msgpack is not None:
             # msgpack natively handles lists and floats without extra copies
-            return _msgpack.packb({
+            packed = _msgpack.packb({
                 "i": self.robot_id,
                 "t": self.robot_type.value,
                 "ts": self.timestamp_sec,
@@ -149,6 +150,9 @@ class RobotTelemetryData:
                 "cm": self.custom_metrics,
                 "s": self.status_message,
             }, use_bin_type=True)
+            if isinstance(packed, bytes):
+                return packed
+            return bytes(packed or b"")
         # Fallback: JSON
         import json
         return json.dumps(self.to_dict()).encode("utf-8")
@@ -156,7 +160,7 @@ class RobotTelemetryData:
     @classmethod
     def from_msgpack(cls, raw_bytes: bytes) -> RobotTelemetryData:
         """Decode a binary msgpack frame into a RobotTelemetryData instance."""
-        if _MSGPACK_AVAILABLE:
+        if _MSGPACK_AVAILABLE and _msgpack is not None:
             try:
                 data = _msgpack.unpackb(raw_bytes, raw=False)
                 if isinstance(data, dict) and "i" in data and "t" in data:

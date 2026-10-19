@@ -107,6 +107,7 @@ class TestCollisionDetectionAndResolution(unittest.TestCase):
 
         manifold = CollisionDetector.check_collision(b1, b2)
         self.assertIsNotNone(manifold)
+        assert manifold is not None
         self.assertAlmostEqual(manifold.depth, 0.5, places=4)
         self.assertAlmostEqual(manifold.normal.x, 1.0, places=4)
 
@@ -118,6 +119,7 @@ class TestCollisionDetectionAndResolution(unittest.TestCase):
 
         manifold = CollisionDetector.check_collision(body1, body2)
         self.assertIsNotNone(manifold)
+        assert manifold is not None
         self.assertAlmostEqual(manifold.depth, 0.2, places=3)
 
     def test_raycast_obb(self):

@@ -28,8 +28,14 @@ class NexusDesktop3DApp:
         self.root.geometry("900x650")
         self.root.configure(bg="#0a0f1d")
 
+        # Event loop for async HAL plugin
+        import asyncio
+        self.loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(self.loop)
+
         # Initialize HAL Plugin
         self.plugin = DiffDriveBasePlugin(robot_id="desktop-rover-01")
+        self.loop.run_until_complete(self.plugin.initialize())
 
         # 3D Camera & View Parameters
         self.cam_azimuth = math.radians(45)   # Horizontal rotation (yaw)
@@ -252,9 +258,10 @@ class NexusDesktop3DApp:
 
     def update_telemetry_loop(self):
         # Read plugin telemetry
-        import asyncio
-        loop = asyncio.get_event_loop()
-        telem = loop.run_until_complete(self.plugin.read_telemetry())
+        try:
+            telem = self.loop.run_until_complete(self.plugin.read_telemetry())
+        except Exception:
+            return
 
         pos_x = telem.pose.position.x
         pos_y = telem.pose.position.y
@@ -274,28 +281,23 @@ class NexusDesktop3DApp:
         self.root.after(50, self.update_telemetry_loop)
 
     def cmd_forward(self):
-        import asyncio
         cmd = MotorCommandData(target_twist=TwistData(linear=Vector3D(x=0.5)), requested_mode=RobotMode.MANUAL)
-        asyncio.get_event_loop().run_until_complete(self.plugin.send_command(cmd))
+        self.loop.run_until_complete(self.plugin.send_command(cmd))
 
     def cmd_left(self):
-        import asyncio
         cmd = MotorCommandData(target_twist=TwistData(angular=Vector3D(z=0.6)), requested_mode=RobotMode.MANUAL)
-        asyncio.get_event_loop().run_until_complete(self.plugin.send_command(cmd))
+        self.loop.run_until_complete(self.plugin.send_command(cmd))
 
     def cmd_right(self):
-        import asyncio
         cmd = MotorCommandData(target_twist=TwistData(angular=Vector3D(z=-0.6)), requested_mode=RobotMode.MANUAL)
-        asyncio.get_event_loop().run_until_complete(self.plugin.send_command(cmd))
+        self.loop.run_until_complete(self.plugin.send_command(cmd))
 
     def cmd_stop(self):
-        import asyncio
         cmd = MotorCommandData(target_twist=TwistData(linear=Vector3D(x=0.0), angular=Vector3D(z=0.0)), requested_mode=RobotMode.MANUAL)
-        asyncio.get_event_loop().run_until_complete(self.plugin.send_command(cmd))
+        self.loop.run_until_complete(self.plugin.send_command(cmd))
 
     def cmd_estop(self):
-        import asyncio
-        asyncio.get_event_loop().run_until_complete(self.plugin.emergency_stop())
+        self.loop.run_until_complete(self.plugin.emergency_stop())
 
 
 def main():

@@ -33,6 +33,7 @@ def test_license_generation_and_validation():
     res = validator.validate()
     assert res.is_valid is True, f"Validation failed: {res.message}"
     assert res.tier == LicenseTier.COMMERCIAL
+    assert res.payload is not None
     assert res.payload.org_name == "RoboCorp Inc."
     assert res.in_sandbox_mode is False
     print("  Valid Commercial License verified successfully!")
